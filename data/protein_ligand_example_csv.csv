@@ -1,0 +1,7 @@
+complex_name,protein_path,ligand,pocket_center_x,pocket_center_y,pocket_center_z,flexible_sidechains
+6agt,data/PDBBind_processed/6agt/6agt_protein.pdb,data/PDBBind_processed/6agt/6agt_ligand.sdf,1,2,3,A:1-A:2-A:3
+6agt,data/PDBBind_processed/6agt/6agt_protein.pdb,COc(cc1)ccc1C#N
+6mo8,data/PDBBind_processed/6mo8/6mo8_protein.pdb,data/PDBBind_processed/6agt/6agt_ligand.mol2
+6mo8,data/PDBBind_processed/6mo8/6mo8_protein.pdb,data/PDBBind_processed/6mo8/6mo8_ligand.sdf
+6mo8,data/PDBBind_processed/6mo8/6mo8_protein.pdb,COc(cc1)ccc1C#N
+6mo8,data/PDBBind_processed/6mo8/6mo8_protein.pdb,data/PDBBind_processed/6hld/6hld_ligand.mol2
