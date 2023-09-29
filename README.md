@@ -2,10 +2,14 @@
 [![python](https://img.shields.io/badge/language-python%20-%2300599C.svg?style=flat-square)](https://github.com/plainerman/DiffDock-Pocket)
 
 DiffDock-Pocket is a binding-pocket specific molecular docking program that uses diffusion to sample ligand and sidechain poses, by Michael Plainer, Marcella Toth, Simon Dobers, Hannes Stark, Gabriele Corso, Celine Marquet, and Regina Barzilay.
+
 In this repository, you will find the code to train a model, run inference, visualizations, and the weights we have been using to generate the numbers presented in the paper. 
 This repository is originally a fork from DiffDock, so some of the commands may seem familiar - but it has been extended, adapted and changed in so many places that you cannot expect any compatability of the two programs. Be aware, and do NOT mix up these two programs!
 
 Feel free to create any issues, or PRs if you have any problems with this repository!
+
+![Alt Text](pocket-visualization.gif)
+
 
 ## Setup Environment
 You need to install the required packages
