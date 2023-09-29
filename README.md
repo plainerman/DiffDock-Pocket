@@ -38,7 +38,7 @@ Or for a computationally generated structure
 
     python inference.py --protein_path example_data/3dpf_protein_esm.pdb --ligand example_data/3dpf_ligand.sdf --batch_size 32 --samples_per_complex 40 --keep_local_structures --save_visualisation
 
-You can easily specify the pocket and flexible sidechains if you want. Then you can also drop `--keep_local_structures`
+You can easily specify the pocket and flexible sidechains if you want. Then you can also drop `--keep_local_structures`. Although it might not make a significant difference which residues are flexible for score-based models, since our model was trained only with flexibility close to the pocket center, we advise using our provided trained model only in that way to prevent out-of-distribution data.
 
     python inference.py --protein_path example_data/3dpf_protein.pdb --ligand example_data/3dpf_ligand.sdf --batch_size 32 --samples_per_complex 40 --save_visualisation --pocket_center_x 9.7742 --pocket_center_y 27.2863 --pocket_center_z 14.6573 --flexible_sidechains A:160-A:193-A:197-A:198-A:222-A:224-A:227
 
