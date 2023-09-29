@@ -8,7 +8,7 @@ This repository is originally a fork from DiffDock, so some of the commands may 
 
 Feel free to create any issues, or PRs if you have any problems with this repository!
 
-![Alt Text](pocket-visualization.gif)
+![Alt Text](visualizations/pocket-visualization.gif)
 
 
 ## Setup Environment
