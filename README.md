@@ -1,12 +1,14 @@
 # DiffDock-Pocket: Diffusion for Pocket-Level Docking with Sidechain Flexibility
 [![python](https://img.shields.io/badge/language-python%20-%2300599C.svg?style=flat-square)](https://github.com/plainerman/DiffDock-Pocket)
+[![License](https://img.shields.io/github/license/plainerman/DiffDock-Pocket?style=flat-square)](LICENSE)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md) 
 
-DiffDock-Pocket is a binding-pocket specific molecular docking program that uses diffusion to sample ligand and sidechain poses, by Michael Plainer, Marcella Toth, Simon Dobers, Hannes Stark, Gabriele Corso, Celine Marquet, and Regina Barzilay.
+DiffDock-Pocket is a binding-pocket specific molecular docking program that uses diffusion to sample ligand and sidechain poses. This repositroy contains the code to the paper by Michael Plainer, Marcella Toth, Simon Dobers, Hannes Stark, Gabriele Corso, Celine Marquet, and Regina Barzilay.
 
-In this repository, you will find the code to train a model, run inference, visualizations, and the weights we have been using to generate the numbers presented in the paper. 
+In this repository, you will find the code to train a model, run inference, visualizations, and the weights we used to achieve the numbers presented in the paper. 
 This repository is originally a fork from DiffDock, so some of the commands may seem familiar - but it has been extended, adapted and changed in so many places that you cannot expect any compatability of the two programs. Be aware, and do NOT mix up these two programs!
 
-Feel free to create any issues, or PRs if you have any problems with this repository!
+Feel free to create any issues, or PRs if you have any problems with this repository! Please consider the [code of conduct](CODE_OF_CONDUCT.md).
 
 ![Visualization of a ligand docking to a protein, within a binding pocket with flexibile sidechains](visualizations/docking-visualization.gif)
 
@@ -25,7 +27,7 @@ You need to install the required packages
     spyrmsd
     pandas
 
-Then, you will also need [ESMFold](https://github.com/facebookresearch/esm). The third command will fail if you do not have `nvcc` (i.e., a properly set up GPU). If you only want to run DiffDock-Pocket on existing complexes, this is not a problem. Only a fully installed ESMFold setup allows to generate ESMFold proteins from a sequence. You can create them on a different machine / in a different environment, or simply on the [web](https://esmatlas.com/resources?action=fold).
+Then, you will also need [ESMFold](https://github.com/facebookresearch/esm). The third command will fail if you do not have `nvcc` (i.e., a properly set up GPU). If you only want to run DiffDock-Pocket on existing complexes, this is not a problem. However, only a fully installed ESMFold setup allows to generate ESMFold proteins from a sequence. You can create them on a different machine / in a different environment, or simply on the [web](https://esmatlas.com/resources?action=fold).
 
     pip install "fair-esm[esmfold]"
     # OpenFold and its remaining dependency
