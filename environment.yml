@@ -1,0 +1,34 @@
+name: diffdock-pocket
+channels:
+  - nvidia
+  - pytorch
+  - pyg
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9.17
+  - pip=23.3.1
+  - pytorch=1.13.1
+  - torchvision=0.14.1
+  - torchaudio=0.13.1
+  - pytorch-cuda=11.7
+  - pyg=2.4.0
+  - pytorch-scatter=2.1.0
+  - pytorch-sparse=0.6.17
+  - pytorch-cluster=1.6.1
+  - pytorch-spline-conv=1.2.2
+  - cuda-11.7.1:cuda-nvcc=11.7.99
+  - pdbfixer=1.9
+  - pip:
+    - e3nn==0.5.1
+    - PyYAML==6.0.1
+    - rdkit==2023.3.3
+    - pandas==2.1.1 
+    - biopython==1.81
+    - networkx==3.2
+    - spyrmsd==0.6.0
+    - scipy==1.11.3
+    - fair-esm[esmfold]==2.0.0
+    - dllogger @ git+https://github.com/NVIDIA/dllogger.git
+    - openfold @ git+https://github.com/aqlaboratory/openfold.git@4b41059694619831a7db195b7e0988fc4ff3a307
+
