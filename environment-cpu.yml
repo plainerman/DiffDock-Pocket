@@ -1,5 +1,6 @@
 name: diffdock-pocket-cpu
 channels:
+  - nvidia
   - pytorch
   - defaults
   - conda-forge
