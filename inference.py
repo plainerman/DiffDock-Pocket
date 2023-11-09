@@ -96,6 +96,7 @@ if args.filtering_model_dir is not None:
         filtering_args = Namespace(**yaml.full_load(f))
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"DiffDock-Pocket Device: {device}")
 
 
 def to_none(x):
