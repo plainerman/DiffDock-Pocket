@@ -1,0 +1,9 @@
+# Ignore hidden files and directories
+.*
+
+# Ignore git directories (redundant)
+.git
+.gitattributes
+
+# Ignore generated user results
+results/user_inference/*
