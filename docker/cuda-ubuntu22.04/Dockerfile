@@ -30,10 +30,11 @@ RUN ~/bin/micromamba --version
 
 # Create conda environment first
 # This is time-consuming and don't want to reproduce it often
-COPY --chown=$APPUSER:$APPUSER ./environment.yml .
-
-RUN ~/bin/micromamba env create --file environment.yml && ~/bin/micromamba clean -afy
+ENV ENV_FILE_NAME=environment.yml
 ENV ENV_NAME="diffdock-pocket"
+COPY --chown=$APPUSER:$APPUSER ./$ENV_FILE_NAME .
+
+RUN ~/bin/micromamba env create --file $ENV_FILE_NAME && ~/bin/micromamba clean -afy
 
 COPY --chown=$APPUSER:$APPUSER . $HOME/DiffDock-Pocket
 
