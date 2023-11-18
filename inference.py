@@ -243,7 +243,7 @@ for idx, orig_complex_graph in tqdm(enumerate(test_loader)):
 
     try:
         data_list = [copy.deepcopy(orig_complex_graph) for _ in range(N)]
-        write_dir = f'{args.out_dir}/index{idx}_{data_list[0]["name"][0].replace("/", "-")}'
+        write_dir = f'{args.out_dir}/index{idx}___{data_list[0]["name"][0].replace("/", "-")}'
         if os.path.exists(write_dir) and args.skip_existing: continue
 
         randomize_position(data_list, score_model_args.no_torsion, args.no_random, score_model_args.tr_sigma_max,
