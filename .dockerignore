@@ -1,5 +1,5 @@
 # Ignore hidden files and directories
-.*
+**/.*
 
 # Ignore git directories (redundant)
 .git
@@ -7,3 +7,8 @@
 
 # Ignore generated user results
 results/user_inference/*
+
+# Do not include PDBBind files
+# (quite likely they are in the same directory)
+**/pdbbind_sequences.fasta
+**/PDBBind_processed/
