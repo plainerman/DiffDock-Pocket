@@ -482,7 +482,7 @@ class PDBBind(Dataset):
         try:
             if ligand is not None:  # This is the case in inference processing
                 rec_model = parse_pdb_from_path(name)
-                name = f'{os.path.dirname(name)}-{os.path.basename(name)}___{os.path.dirname(ligand_description[0])}-{os.path.basename(ligand_description[0])}'
+                name = f'{os.path.basename(name)}___{os.path.basename(ligand_description[0])}'
                 ligs, ligs_center, ligs_predefined_flexible_sidechains = [ligand[0]], [ligand[1]], [ligand[2]]
             else:
                 # rec_model_match is typically the HOLO / PDB structure
