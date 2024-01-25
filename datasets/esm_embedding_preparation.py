@@ -11,7 +11,7 @@ from Bio import SeqIO
 
 parser = ArgumentParser()
 parser.add_argument('--out_file', type=str, default="data/prepared_for_esm.fasta")
-parser.add_argument('--protein_ligand_csv', type=str, default='data/protein_ligand_example_csv.csv', help='Path to a .csv specifying the input as described in the main README')
+parser.add_argument('--protein_ligand_csv', type=str, default='data/protein_ligand_example.csv', help='Path to a .csv specifying the input as described in the main README')
 parser.add_argument('--protein_path', type=str, default=None, help='Path to a single PDB file. If this is not None then it will be used instead of the --protein_ligand_csv')
 args = parser.parse_args()
 
