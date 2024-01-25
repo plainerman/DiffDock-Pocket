@@ -10,7 +10,11 @@ from argparse import Namespace, ArgumentParser, FileType
 import numpy as np
 import torch.nn.functional as F
 
-import wandb
+try:
+    import wandb
+except ImportError:
+    print(f"wandb not installed, cannot use wandb features")
+
 import torch
 from sklearn.metrics import roc_auc_score
 from torch_geometric.loader import DataListLoader, DataLoader
