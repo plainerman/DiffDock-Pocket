@@ -3,7 +3,6 @@ import math
 import os
 from functools import partial
 
-import wandb
 import torch
 torch.multiprocessing.set_sharing_strategy('file_system')
 
@@ -18,10 +17,12 @@ from utils.diffusion_utils import t_to_sigma as t_to_sigma_compl, t_to_sigma_ind
 from datasets.pdbbind import construct_loader
 from utils.parsing import parse_train_args
 from utils.training import train_epoch, test_epoch, loss_function, inference_epoch_fix
-from utils.utils import save_yaml_file, get_optimizer_and_scheduler, get_model, ExponentialMovingAverage
+from utils.utils import save_yaml_file, get_optimizer_and_scheduler, get_model, ExponentialMovingAverage, \
+    get_default_device
 
 
 def train(args, model, optimizer, scheduler, ema_weights, train_loader, val_loader, t_to_sigma, run_dir):
+    device = args.device
     best_val_loss = math.inf
     best_val_sc_loss = math.inf
     best_val_inference_value = math.inf if args.inference_earlystop_goal == 'min' else 0
@@ -48,8 +49,8 @@ def train(args, model, optimizer, scheduler, ema_weights, train_loader, val_load
         print("Epoch {}: Validation loss {:.4f}  tr {:.4f}   rot {:.4f}   tor {:.4f}   sc_tor {:.4f}"
               .format(epoch, val_losses['loss'], val_losses['tr_loss'], val_losses['rot_loss'], val_losses['tor_loss'], val_losses['sc_tor_loss']))
 
-        if args.val_inference_freq != None and (epoch + 1) % args.val_inference_freq == 0:
-            inf_metrics = inference_epoch_fix(model, val_loader.dataset.complex_graphs[:args.num_inference_complexes], device, t_to_sigma, args)
+        if args.val_inference_freq is not None and (epoch + 1) % args.val_inference_freq == 0:
+            inf_metrics = inference_epoch_fix(model, val_loader.dataset[:args.num_inference_complexes], device, t_to_sigma, args)
             print("Epoch {}: Val inference rmsds_lt2 {:.3f} rmsds_lt5 {:.3f}"
                   .format(epoch, inf_metrics['rmsds_lt2'], inf_metrics['rmsds_lt5']), end=" ")
             if args.flexible_sidechains:
@@ -77,19 +78,21 @@ def train(args, model, optimizer, scheduler, ema_weights, train_loader, val_load
 
             logs.update({'valinf_' + k: v for k, v in inf_metrics.items()}, step=epoch + 1)
 
-        if args.train_inference_freq != None and (epoch + 1) % args.train_inference_freq == 0:
+        if args.train_inference_freq is not None and (epoch + 1) % args.train_inference_freq == 0:
             if args.no_torsion:
-                inf_metrics = inference_epoch_fix(model, train_loader.dataset.complex_graphs[:args.num_inference_complexes], device, t_to_sigma, args)
+                inf_metrics = inference_epoch_fix(model, train_loader.dataset[:args.num_inference_complexes], device, t_to_sigma, args)
                 print("Epoch {}: Train inference rmsds_lt2 {:.3f} rmsds_lt5 {:.3f} "
                       .format(epoch, inf_metrics['rmsds_lt2'], inf_metrics['rmsds_lt5']))
                 logs.update({'traininf_' + k: v for k, v in inf_metrics.items()}, step=epoch + 1)
             else:
                 print('Skipping inference on the training dataset: not possible when running with torsion because the orig_pos is not saved for the training set.')
+
         if not args.use_ema: ema_weights.copy_to(model.parameters())
         ema_state_dict = copy.deepcopy(model.module.state_dict() if device.type == 'cuda' else model.state_dict())
         ema_weights.restore(model.parameters())
 
         if args.wandb:
+            import wandb
             logs.update({'train_' + k: v for k, v in train_losses.items()})
             logs.update({'val_' + k: v for k, v in val_losses.items()})
             logs['current_lr'] = optimizer.param_groups[0]['lr']
@@ -143,6 +146,8 @@ def train(args, model, optimizer, scheduler, ema_weights, train_loader, val_load
 
 def main_function():
     args = parse_train_args()
+    device = get_default_device()
+    args.device = device
     if args.config:
         config_dict = yaml.load(args.config, Loader=yaml.FullLoader)
         arg_dict = args.__dict__
@@ -167,9 +172,9 @@ def main_function():
     optimizer, scheduler = get_optimizer_and_scheduler(args, model, scheduler_mode=args.inference_earlystop_goal if args.val_inference_freq is not None else 'min')
     ema_weights = ExponentialMovingAverage(model.parameters(),decay=args.ema_rate)
 
-    if args.restart_dir:
+    if args.restart_dir and os.path.exists(args.restart_dir):
         try:
-            dict = torch.load(f'{args.restart_dir}/last_model.pt', map_location=torch.device('cpu'))
+            dict = torch.load(f'{args.restart_dir}/last_model.pt', map_location=device)
             if args.restart_lr is not None: dict['optimizer']['param_groups'][0]['lr'] = args.restart_lr
             optimizer.load_state_dict(dict['optimizer'])
             model.module.load_state_dict(dict['model'], strict=True)
@@ -178,14 +183,15 @@ def main_function():
             print("Restarting from epoch", dict['epoch'])
         except Exception as e:
             print("Exception", e)
-            dict = torch.load(f'{args.restart_dir}/best_model.pt', map_location=torch.device('cpu'))
+            dict = torch.load(f'{args.restart_dir}/best_model.pt', map_location=device)
             model.module.load_state_dict(dict, strict=True)
             print("Due to exception had to take the best epoch and no optimiser")
 
     numel = sum([p.numel() for p in model.parameters()])
-    print('Model with', numel, 'parameters')
+    print(f'Model {type(model)} with {numel:,} parameters')
 
     if args.wandb:
+        import wandb
         wandb.init(
             entity='coarse-graining-mit',
             settings=wandb.Settings(start_method="fork"),
@@ -199,11 +205,10 @@ def main_function():
     run_dir = os.path.join(args.log_dir, args.run_name)
     yaml_file_name = os.path.join(run_dir, 'model_parameters.yml')
     save_yaml_file(yaml_file_name, args.__dict__)
-    args.device = device
 
     train(args, model, optimizer, scheduler, ema_weights, train_loader, val_loader, t_to_sigma, run_dir)
 
 
 if __name__ == '__main__':
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    torch.multiprocessing.set_start_method('spawn')
     main_function()

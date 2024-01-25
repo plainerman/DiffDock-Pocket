@@ -1,11 +1,17 @@
+import logging
+import math
 import os
 import subprocess
 import warnings
 from datetime import datetime
-from typing import List
+from contextlib import contextmanager
+import signal
+from functools import wraps
+from typing import List, Tuple
 
 import numpy
 import numpy as np
+import pandas as pd
 import torch
 import yaml
 from rdkit import Chem
@@ -18,8 +24,6 @@ from models.all_atom_score_model import TensorProductScoreModel as AAScoreModel
 from models.score_model import TensorProductScoreModel as CGScoreModel
 from utils.diffusion_utils import get_timestep_embedding
 from spyrmsd import rmsd, molecule
-
-from utils.visualise import PDBFile
 
 
 def get_obrmsd(mol1_path, mol2_path, cache_name=None):
@@ -145,11 +149,11 @@ def get_model(args, device, t_to_sigma, no_parallel=False, confidence_mode=False
 
     timestep_emb_func = get_timestep_embedding(
         embedding_type=args.embedding_type if 'embedding_type' in args else 'sinusoidal',
-        embedding_dim=args.sigma_embed_dim,
-        embedding_scale=args.embedding_scale if 'embedding_type' in args else 10000)
+        dim=args.sigma_embed_dim,
+        scale=args.embedding_scale if 'embedding_scale' in args else 10000)
 
-    lm_embedding_type = None
-    if args.esm_embeddings_path is not None: lm_embedding_type = 'esm'
+    # lm_embedding_type = None
+    lm_embedding_type = 'esm'
 
     model = model_class(t_to_sigma=t_to_sigma,
                         device=device,
@@ -211,8 +215,21 @@ def get_symmetry_rmsd(mol, coords1, coords2, mol2=None):
         return RMSD
 
 
-import signal
-from contextlib import contextmanager
+def to_none(x):
+    if isinstance(x, list):
+        return [to_none(y) for y in x]
+    if isinstance(x, (int, float, complex, np.number)):
+        return None if (math.isnan(x) or pd.isna(x)) else x
+    elif not x:
+        return None
+    else:
+        return x
+
+
+def center_to_torch(x, y, z):
+    if any([to_none(i) is None for i in (x, y, z)]):
+        return None
+    return torch.tensor([x, y, z], dtype=torch.float32)
 
 
 class TimeoutException(Exception): pass
@@ -315,4 +332,77 @@ class ExponentialMovingAverage:
         self.num_updates = state_dict['num_updates']
         self.shadow_params = [tensor.to(device) for tensor in state_dict['shadow_params']]
 
-        
+
+def get_default_device():
+    if torch.cuda.is_available():
+        return torch.device('cuda')
+    elif torch.backends.mps.is_available():
+        # Not all operations implemented in MPS yet
+        use_mps = os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK", "0") == "1"
+        if use_mps:
+            return torch.device('mps')
+        else:
+            return torch.device('cpu')
+    else:
+        return torch.device('cpu')
+
+
+def get_available_devices(max_devices=None):
+    device = get_default_device()
+    if device.type == "cuda":
+        num_gpus = torch.cuda.device_count()
+        if max_devices is not None:
+            num_gpus = min(num_gpus, max_devices)
+        gpu_list = [get_device(i) for i in range(num_gpus)]
+        return gpu_list
+    else:
+        num_devices = 1
+        if max_devices is None and device.type == "cpu":
+            num_devices = torch.multiprocessing.cpu_count()
+        return [device]*num_devices
+
+
+def get_device(gpu_id: int):
+    if gpu_id is not None and torch.cuda.is_available() and gpu_id < torch.cuda.device_count():
+        return torch.device(f'cuda:{gpu_id}')
+    else:
+        return None
+
+
+def ensure_device(func):
+    """
+    Decorator to ensure that the device kwarg is set to the default device if it is None.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        device = kwargs.get("device", None)
+        # We specifically only do this stuff if device is one of the kwargs, but is None
+        needs_device = "device" in kwargs and kwargs["device"] is None
+        if needs_device:
+            device = get_default_device()
+        kwargs["device"] = device
+        if device is not None and device.type == 'cuda':
+            # Set the default device to the device we are using
+            # This will ensure any new tensors created are on the correct device
+            with torch.cuda.device(device):
+                result = func(*args, **kwargs)
+        else:
+            result = func(*args, **kwargs)
+
+        return result
+
+    return wrapper
+
+
+def count_open_files():
+    """Count the number of open files in /dev/shm/torch. Checking for memory leaks with torch multiprocessing"""
+    import subprocess
+    args = ['lsof', '-p', str(os.getpid())]
+    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    lines = stdout.decode().splitlines()
+
+    # Filter for lines containing "dev/shm/torch"
+    filtered_lines = [line for line in lines if "dev/shm/torch" in line]
+    return len(filtered_lines)
+
