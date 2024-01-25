@@ -61,14 +61,14 @@ class PDBFile:
 
 class SidechainPDBFile:
     # implements visualization for a receptor with different sidechain conformations 
-    def __init__(self, rec_structure:Bio.PDB.Structure.Structure, flex_residues_info, conformations:List[tensor]) -> None:
+    def __init__(self, rec_structure: Bio.PDB.Structure.Structure, flex_residues_info, conformations: List[tensor]) -> None:
         self.rec_structure = rec_structure
         self.flex_residues_info = flex_residues_info
         self.sidechain_conformations = conformations
 
-
-    def write(self, outfile:str):
-        pending_ids = self.flex_residues_info.pdbIds[0] if hasattr(self.flex_residues_info, 'pdbIds') else []
+    def write(self, outfile: str):
+        pending_ids = self.flex_residues_info.pdbIds if hasattr(self.flex_residues_info, 'pdbIds') else []
+        pending_ids = list(map(tuple, pending_ids))
         flex_res_to_index = [] if len(pending_ids) == 0 else [0] + self.flex_residues_info.residueNBondsMapping.cumsum(axis=0).cpu().tolist()
 
         writer = PDBIO()
@@ -111,7 +111,15 @@ class SidechainPDBFile:
                         done_ids.append(simplified_res_id)
 
                 assert len(set(done_ids)) == len(done_ids), "Some residues were repeated in the PDB file!"
-                assert set(done_ids) == set(pending_ids), "Not all flexible residues were present in the PDB file!"
+                done_ids = set(done_ids)
+                pend_ids = set(pending_ids)
+                if done_ids != pend_ids:
+                    print("Warning! Not all flexible residues were present in the PDB file!")
+                    print(f"Pending IDs: {pend_ids}")
+                    print(f"Done IDs: {done_ids}")
+                    print("Missing residues: ", pend_ids - done_ids)
+                    print(f"Rec structure: {self.rec_structure}")
+                    raise Exception("Missing residues in the PDB file!")
 
                 if len(self.sidechain_conformations) > 1:
                     output_file.write("MODEL\n")
