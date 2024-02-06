@@ -473,7 +473,6 @@ if __name__ == '__main__':
         if not hasattr(score_model_args, 'esm_embeddings_path'):  # exists for compatibility
             score_model_args.esm_embeddings_path = None
 
-    # TODO: Can we get this away? Because we might not be using the flexibility in the original model
     # Sidechain configuration is specified by the original model
     args.flexible_sidechains = score_model_args.flexible_sidechains
     args.flexdist = score_model_args.flexdist
