@@ -17,8 +17,8 @@ Feel free to create any issues, or PRs if you have any problems with this reposi
 ![Visualization of a ligand docking to a protein, within a binding pocket with flexibile sidechains](visualizations/docking-visualization.gif)
 
 
-## Setup Environment
-You can either set the CPU or CUDA conda environment by simply running
+## Setup the conda environment
+You can either create the CPU or CUDA conda environment by simply running
 ```
 conda env create -f environment[-cpu].yml
 ```
