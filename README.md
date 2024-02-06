@@ -1,12 +1,16 @@
 # DiffDock-Pocket: Diffusion for Pocket-Level Docking with Sidechain Flexibility
 [![python](https://img.shields.io/badge/language-python%20-%2300599C.svg?style=flat-square)](https://github.com/plainerman/DiffDock-Pocket)
+[![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-blue?style=flat-square)](https://huggingface.co/spaces/silterra/DiffDock-Pocket-Web)
 [![License](https://img.shields.io/github/license/plainerman/DiffDock-Pocket?style=flat-square)](LICENSE)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md) 
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md)
 
-DiffDock-Pocket is a binding-pocket specific molecular docking program that uses diffusion to sample ligand and sidechain poses. This repositroy contains the code to the paper by Michael Plainer, Marcella Toth, Simon Dobers, Hannes Stark, Gabriele Corso, Celine Marquet, and Regina Barzilay.
+DiffDock-Pocket is an all-atom docking model operating on the pocket level. It implements diffusion over side chain torsion angles and is optimized for computationally generated structures
+This repositroy contains the code to the paper by Michael Plainer, Marcella Toth, Simon Dobers, Hannes Stark, Gabriele Corso, Celine Marquet, and Regina Barzilay.
 
 In this repository, you will find the code to train a model, run inference, visualizations, and the weights we used to achieve the numbers presented in the paper. 
 This repository is originally a fork from DiffDock, so some of the commands may seem familiar - but it has been extended, adapted and changed in so many places that you cannot expect any compatability of the two programs. Be aware, and do NOT mix up these two programs!
+
+If you want an easy way to run inference, you can use the HuggingFace interface [here](https://huggingface.co/spaces/silterra/DiffDock-Pocket-Web).
 
 Feel free to create any issues, or PRs if you have any problems with this repository! Please consider the [code of conduct](CODE_OF_CONDUCT.md).
 
@@ -14,51 +18,56 @@ Feel free to create any issues, or PRs if you have any problems with this reposi
 
 
 ## Setup Environment
-You need to install the required packages
-
-    pytorch
-    pyg
-    pyyaml
-    scipy
-    networkx
-    biopython
-    rdkit-pypi
-    e3nn
-    spyrmsd
-    pandas
-
-Then, you will also need [ESMFold](https://github.com/facebookresearch/esm). The third command will fail if you do not have `nvcc` (i.e., a properly set up GPU). If you only want to run DiffDock-Pocket on existing complexes, this is not a problem. However, only a fully installed ESMFold setup allows to generate ESMFold proteins from a sequence. You can create them on a different machine / in a different environment, or simply on the [web](https://esmatlas.com/resources?action=fold).
-
-    pip install "fair-esm[esmfold]"
-    # OpenFold and its remaining dependency
-    pip install 'dllogger @ git+https://github.com/NVIDIA/dllogger.git'
-    pip install 'openfold @ git+https://github.com/aqlaboratory/openfold.git@4b41059694619831a7db195b7e0988fc4ff3a307'
-
+You can either set the CPU or CUDA conda environment by simply running
+```
+conda env create -f environment[-cpu].yml
+```
+with, or without the cpu flag. The CUDA version is recommended, as it is much faster.
 
 ## Running DiffDock-Pocket on custom complexes
-This is a very basic example, that uses a ligand and a protein. The `--keep_local_structures` does not modify the ligand and uses it to compute the pocket and flexible sidechains.
+In this minimal example, we use the complex `3dpf` and re-dock the ligand with flexible side cahins.
+We draw 40 samples, and rank them with the confidence model. All predictions will be stored in `results/`. 
 
-    python inference.py --protein_path example_data/3dpf_protein.pdb --ligand example_data/3dpf_ligand.sdf --batch_size 32 --samples_per_complex 40 --keep_local_structures --save_visualisation
+    python inference.py --protein_path example_data/3dpf_protein.pdb --ligand example_data/3dpf_ligand.sdf --batch_size 20 --samples_per_complex 40 --keep_local_structures --save_visualisation
 
-Or for a computationally generated structure
+Here, we specified the `--keep_local_structures` flag to not modify the ligand. 
+With this, the pocket and which side chains to model flexible is automatically determined.
 
-    python inference.py --protein_path example_data/3dpf_protein_esm.pdb --ligand example_data/3dpf_ligand.sdf --batch_size 32 --samples_per_complex 40 --keep_local_structures --save_visualisation
+If this command runs out of memory, you can decrease the `--batch_size` or the `--samples_per_complex` parameter.
+Lowering `--batch_size` will not impact the quality of the results, but will increase the runtime.
 
-You can easily specify the pocket and flexible sidechains if you want. Then you can also drop `--keep_local_structures`. Although it might not make a significant difference which residues are flexible for score-based models, since our model was trained only with flexibility close to the pocket center, we advise using our provided trained model only in that way to prevent out-of-distribution data.
+A similar command for computationally generated structures would be:
 
-    python inference.py --protein_path example_data/3dpf_protein.pdb --ligand example_data/3dpf_ligand.sdf --batch_size 32 --samples_per_complex 40 --save_visualisation --pocket_center_x 9.7742 --pocket_center_y 27.2863 --pocket_center_z 14.6573 --flexible_sidechains A:160-A:193-A:197-A:198-A:222-A:224-A:227
+    python inference.py --protein_path example_data/3dpf_protein_esm.pdb --ligand example_data/3dpf_ligand.sdf --batch_size 20 --samples_per_complex 40 --keep_local_structures --save_visualisation
 
-Or if you do not have a ligand at hand, you can also use the SMILES representation. Simply use
+If you know your binding pocket and which side chains to model as flexible, you can specify them.
+In this case, you can also drop `--keep_local_structures`.
+We advise using our provided model only with flexible amino acids that have at least one heavy atom within 3.5A of any heavy ligand atom.
+This prevents out-of-distribution data.
+
+    python inference.py --protein_path example_data/3dpf_protein.pdb --ligand example_data/3dpf_ligand.sdf --batch_size 20 --samples_per_complex 40 --save_visualisation --pocket_center_x 9.7742 --pocket_center_y 27.2863 --pocket_center_z 14.6573 --flexible_sidechains A:160-A:193-A:197-A:198-A:222-A:224-A:227
+
+Or if you do not have a ligand at hand, you can also use the SMILES representation. 
 
     --ligand [H]/N=C1/C(=O)C(=O)[C@@]1([H])[N@@+]1([H])C([H])([H])c2c([H])c(C([H])([H])N([H])C(=O)c3nc4sc5c(c4c(=O)n3[H])C([H])([H])C([H])([H])S(=O)(=O)C5([H])[H])c([H])c([H])c2C([H])([H])C1([H])[H]
 
-Also see `data/protein_ligand_example_csv` with `--protein_ligand_csv protein_ligand_example_csv.csv` to specify inference on multiple complexes at once.
+However, in this case you have to specify your pocket center and flexible side chains.
+
+If you are dealing with multiple complexes, take a look at `data/protein_ligand_example_csv` with the flag`--protein_ligand_csv data/protein_ligand_example_csv.csv`.
+This allows you to specify inference on multiple complexes at once, where you can specify the pocket center and flexible side chains for each complex.
+
+## Choosing the pocket center
+When choosing the pocket center, it is best to determine the amino acids that are close to the binding site and compute the mean of their C-alpha coordinates.
+In our training, we have chosen all amino acids where their C-alpha atom is within 5A of any heavy atom of the ligand.
 
 # Reproduce the paper numbers
 Download the data and place it as described in the "Dataset" section above.
 
 ## Dataset
-We are using PDBBind which you can download from many sources, e.g. [from zenedo](https://zenodo.org/record/6034088) by the authors of EquiBind. Unpack it to `data/PDBBind_processed`.
+We are using PDBBind which you can download from many sources
+However, we also provide a pre-processed PDBBind dataset at [zenedo](TODO).
+All proteins have been fixed with [PDBFixer](https://github.com/openmm/pdbfixer) and aligned to minimize the RMSD in the pocket.
+Unpack it to `data/PDBBind_processed`.
 
 ### Generate the ESM2 embeddings for the proteins
 First run:
@@ -96,3 +105,20 @@ Train the confidence model by running the following:
 first with `--cache_creation_id 1` then `--cache_creation_id 2` etc. up to 4
 
 Now everything is trained and you can run inference with your new model :).
+
+# Citation
+
+If you use DiffDock-Pocket in your research, please cite the following paper:
+```
+@article{plainer2023diffdockpocket,
+  author = {Plainer, Michael and Toth, Marcella and Dobers, Simon and St{\"a}rk, Hannes and Corso, Gabriele and Marquet, C{\'e}line and Barzilay, Regina},
+  title = {{DiffDock-Pocket}: Diffusion for Pocket-Level Docking with Side Chain Flexibility},
+  year = {2023},
+  maintitle = {Advances in Neural Information Processing Systems},
+  booktitle = {Machine Learning in Structural Biology},
+}
+```
+
+# Acknowledgements
+
+Thank you [@jsilter](https://github.com/jsilter) for making this code easier to use and for creating the HuggingFace interface!
