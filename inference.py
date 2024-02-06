@@ -51,7 +51,7 @@ def _get_parser():
     parser.add_argument('--out_dir', type=str, default='results/user_inference', help='Directory where the outputs will be written to')
     parser.add_argument('--save_visualisation', action='store_true', default=False, help='Save a pdb file with all of the steps of the reverse diffusion')
     parser.add_argument('--samples_per_complex', type=int, default=10, help='Number of samples to generate')
-    parser.add_argument('--rigid', action='store_true', default=False, help='Override the arguments of the model and use a rigid model')
+    parser.add_argument('--rigid', action='store_true', default=False, help='Override the arguments of the model and use a rigid model. Caution: In our tests this resulted in worse performance.')
 
     parser.add_argument('--pocket_center_x', type=float, default=None, help='The x coordinate for the pocket center')
     parser.add_argument('--pocket_center_y', type=float, default=None, help='The x coordinate for the pocket center')
@@ -298,7 +298,6 @@ def main(args):
                            'flexible_sidechains': [args.flexible_sidechains]})
         protein_ligand_df = load_protein_ligand_df(None, df=df)
     else:
-        #TODO: add support for protein sequence to pdb file?
         raise ValueError('Either --protein_ligand_csv or --protein_path has to be specified')
 
     if "computational_protein" in protein_ligand_df.columns:

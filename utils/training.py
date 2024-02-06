@@ -169,10 +169,6 @@ def train_epoch(model, loader, optimizer, device, t_to_sigma, loss_fn, ema_weigt
                 ema_weigths.update(model.parameters())
                 cur_losses = [loss.cpu().detach(), tr_loss, rot_loss, tor_loss, sc_tor_loss, tr_base_loss, rot_base_loss, tor_base_loss, sc_tor_base_loss]
                 meter.add(cur_losses)
-                if False:
-                    print(f"All losses in current epoch:")
-                    for ii, cl in enumerate(cur_losses):
-                        print(f"loss {ii}: {cl}")
 
         except RuntimeError as e:
             if 'out of memory' in str(e).lower():
