@@ -44,7 +44,7 @@ def _get_parser():
     parser.add_argument('--config', type=FileType(mode='r'), default=None)
     parser.add_argument('--complex_name', type=str, default='unnamed_complex', help='Name that the complex will be saved with')
     parser.add_argument('--protein_ligand_csv', type=str, default=None, help='Path to a .csv file specifying the input as described in the README. If this is not None, it will be used instead of the --protein_path and --ligand parameters')
-    parser.add_argument('--protein_path', type=str, default=None, help='Path to the protein .pdb file')
+    parser.add_argument('--protein_path', '--experimental_protein', type=str, default=None, help='Path to the protein .pdb file')
     # parser.add_argument('--protein_sequence', type=str, default=None, help='Sequence of the protein for ESMFold, this is ignored if --protein_path is not None') #TODO: implement protein_sequence
     parser.add_argument('--ligand', type=str, default='COc(cc1)ccc1C#N', help='Either a SMILES string or the path to a molecule file that rdkit can read')
     parser.add_argument('--flexible_sidechains', type=str, default=None, help='Specify which amino acids will be flexible. E.g., A:130-B:140 will make amino acid with id 130 in chain A, and id 140 in chain B flexible.')
@@ -339,7 +339,7 @@ def main(args):
                                knn_only_graph=not score_model_args.not_knn_only_graph,
                                include_miscellaneous_atoms=score_model_args.include_miscellaneous_atoms,
                                use_old_wrong_embedding_order=score_model_args.use_old_wrong_embedding_order)
-        test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=False)
+        # test_loader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=False)
 
         filtering_test_dataset = filtering_complex_dict = None
         if args.filtering_model_dir is not None:

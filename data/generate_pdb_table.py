@@ -1,5 +1,12 @@
 #!/bin/env python
-__doc__ = """ Generate a table of PDB and ligand files for training, based on a root directory of PDB files. """
+__doc__ = """ Generate a table of PDB and ligand files for training, based on a root directory of PDB files. 
+
+For example:
+
+python data/generate_pdb_table.py "data/PDBBind_atomCorrected" "esmfold_data_table" \
+--experimental_name "protein_processed_fix" --computational_name "protein_esmfold_aligned_tr_fix" \
+--val_frac 0.2 --seed 0
+"""
 
 import datetime
 import os
