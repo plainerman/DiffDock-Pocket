@@ -5,7 +5,7 @@
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?style=flat-square)](CODE_OF_CONDUCT.md)
 
 DiffDock-Pocket is an all-atom docking model operating on the pocket level. It implements diffusion over side chain torsion angles and is optimized for computationally generated structures
-This repositroy contains the code to the paper by Michael Plainer, Marcella Toth, Simon Dobers, Hannes Stark, Gabriele Corso, Celine Marquet, and Regina Barzilay.
+This repository contains the code to the paper by Michael Plainer, Marcella Toth, Simon Dobers, Hannes Stark, Gabriele Corso, Celine Marquet, and Regina Barzilay.
 
 In this repository, you will find the code to train a model, run inference, visualizations, and the weights we used to achieve the numbers presented in the paper. 
 This repository is originally a fork from DiffDock, so some of the commands may seem familiar - but it has been extended, adapted and changed in so many places that you cannot expect any compatability of the two programs. Be aware, and do NOT mix up these two programs!
