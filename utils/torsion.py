@@ -299,13 +299,6 @@ def modify_sidechain_torsion_angle(pos, edge_index, mask_subcomponent, subcompon
         except Exception as e:
             print(f'Skipping sidechain update because of the error:')
             print(e)
-            print("pos size: ", np.size(pos))
-            print("edge_index: ", edge_index)
-            print("mask_subcomponent: ", mask_subcomponent)
-            print("subcomponents: ", subcomponents)
-            print("torsion_update: ", torsion_update)
-            print("mask_rotate: ", mask_rotate)
-            print("v: ", v)
 
     if not as_numpy:
         pos = torch.from_numpy(pos.astype(np.float32))

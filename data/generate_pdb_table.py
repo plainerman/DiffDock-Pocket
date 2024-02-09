@@ -22,11 +22,11 @@ def _get_parser():
                         help="Base for output files. There may be multiple output files, which will"
                              "have different suffixes.")
 
-    parser.add_argument("--experimental_name", type=str, default="protein_processed",
+    parser.add_argument("--experimental_name", type=str, default="protein_processed_fix",
                         help="Expect experimental PDB files to be named {pdb_id}_{experimental_name}.pdb")
 
     parser.add_argument("--computational_name", type=str, default="protein_esmfold_aligned_tr_fix",
-                        help="Expect experimental PDB files to be named {pdb_id}_{experimental_name}.pdb")
+                        help="Expect computational PDB files to be named {pdb_id}_{computational_name}.pdb")
 
     parser.add_argument("--ligand_name", type=str, default="ligand",
                         help="Expect ligand files to be named {pdb_id}_{ligand_name}.{ligand_extension}")
