@@ -47,7 +47,6 @@ def get_sequence_simple(file_path):
     # Get the approximate amino acid sequence from a PDB file
     # Don't parse the full structure, just get the sequence
     seq = []
-    last_aa = None
     last_chain = None
     lines = open(file_path, 'r').readlines()
     keep_atoms = {'ATOM', 'HETATM'}
@@ -67,7 +66,7 @@ def get_sequence_simple(file_path):
                     seq.append(':')
                 last_chain = cur_chain
 
-                if cur_aa != last_aa and cur_aa in three_to_one:
+                if cur_aa in three_to_one:
                     seq.append(three_to_one[cur_aa])
 
     return "".join(seq)

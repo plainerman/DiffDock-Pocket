@@ -59,7 +59,6 @@ def get_sequence_simple(file_path):
     # Don't parse the full structure, just get the sequence
     # BioPython parser is pretty slow and way overkill for this task
     seq = []
-    last_aa = None
     last_chain = None
     lines = open(file_path, 'r').readlines()
     keep_atoms = {'ATOM', 'HETATM'}
@@ -79,8 +78,7 @@ def get_sequence_simple(file_path):
                     seq.append(':')
                 last_chain = cur_chain
 
-                if cur_aa != last_aa:
-                    seq.append(cur_aa)
+                seq.append(cur_aa)
 
     return seq
 
