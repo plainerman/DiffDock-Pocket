@@ -6,7 +6,7 @@
 .gitattributes
 
 # Ignore generated user results
-results/user_inference/*
+results/*
 
 # Do not include PDBBind files
 # (quite likely they are in the same directory)

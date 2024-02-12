@@ -9,9 +9,10 @@ from scipy.spatial.transform import Rotation as R
 
 def optimize_rotatable_bonds(rec, true_rec, subcomponents, subcomponentsMapping, edge_idx, residueNBondsMapping, ligand,
                              score="dist", seed=0,
-                             popsize=15, maxiter=1000, mutation=(0.5, 1), recombination=0.7):
+                             popsize=15, maxiter=1000, mutation=(0.5, 1), recombination=0.7, verbose=False):
     if len(residueNBondsMapping) == 0:
-        print("No rotatable bonds found for conformer matching.")
+        if verbose:
+            print("No rotatable bonds found for conformer matching.")
         return rec, [], 0
 
     complete_rmsd_start = RMSD(list(range(len(list(rec.get_atoms())))), np.array([a.coord for a in rec.get_atoms()]),
@@ -54,7 +55,8 @@ def optimize_rotatable_bonds(rec, true_rec, subcomponents, subcomponentsMapping,
                       np.array([a.coord for a in true_rec.get_atoms()]))
 
         if before <= opt.last_rmsd:
-            print("No improvement possible for this sidechain. Not applying any rotations.")
+            if verbose:
+                print("No improvement possible for this sidechain. Not applying any rotations.")
         else:
             # Apply and store the optimal rotations
             new_pos = opt.apply_rotations(result['x'])
@@ -74,9 +76,9 @@ def optimize_rotatable_bonds(rec, true_rec, subcomponents, subcomponentsMapping,
 
     assert complete_rmsd_end <= complete_rmsd_start, "RMSD should not increase after conformer matching."
 
-    print(
-        f"Sidechain conformer matching reduced the overall rmsd by {complete_rmsd_start - complete_rmsd_end} (from {complete_rmsd_start} to {complete_rmsd_end})")
-    print(f"Average RMSD delta after sidechain conformer matching: {improvements / len(residueNBondsMapping)}")
+    if verbose:
+        print(f"Sidechain conformer matching reduced the overall rmsd by {complete_rmsd_start - complete_rmsd_end} (from {complete_rmsd_start} to {complete_rmsd_end})")
+        print(f"Average RMSD delta after sidechain conformer matching: {improvements / len(residueNBondsMapping)}")
 
     return rec, \
            optimal_rotations, \

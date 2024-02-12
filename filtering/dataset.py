@@ -420,7 +420,6 @@ class FilteringDataset(Dataset):
                             "sc_rmsd_classification_cutoff and rmsd_classification_cutoff must be both lists or both not lists"
 
                         if isinstance(self.sc_rmsd_classification_cutoff, list):
-                            # TODO: implement this
                             raise NotImplementedError("sc_rmsd_classification_cutoff as list not implemented")
 
                     complex_graph.sc_rmsd = torch.tensor(sc_rmsds[sample]).unsqueeze(0).float()
@@ -526,7 +525,6 @@ class FilteringDataset(Dataset):
         rmsds, sc_rmsds, full_ligand_positions, full_sc_positions, names, trajectories, sidechain_trajectories = [], [], [], [], [], [], []
         with tqdm(total=len(complex_graphs)) as pbar:
             for idx, orig_complex_graph in tqdm(enumerate(loader), total=len(complex_graphs)):
-                # TODO try to get the molecule directly from file without and check same results to avoid any kind of leak
                 data_list = [copy.deepcopy(orig_complex_graph) for _ in range(self.samples_per_complex)]
                 randomize_position(data_list, self.original_model_args.no_torsion, False, self.original_model_args.tr_sigma_max, flexible_sidechains=self.original_model_args.flexible_sidechains)
 

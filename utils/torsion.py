@@ -64,9 +64,13 @@ def get_transformation_mask(pyg_data):
 
     return mask_edges, mask_rotate
 
+
 def modify_conformer_torsion_angles(pos, edge_index, mask_rotate, torsion_updates, as_numpy=False):
     pos = copy.deepcopy(pos)
-    if type(pos) != np.ndarray: pos = pos.cpu().numpy()
+    orig_device = None
+    if type(pos) != np.ndarray:
+        orig_device = pos.device
+        pos = pos.cpu().numpy()
 
     for idx_edge, e in enumerate(edge_index.cpu().numpy()):
         if torsion_updates[idx_edge] == 0:
@@ -83,7 +87,10 @@ def modify_conformer_torsion_angles(pos, edge_index, mask_rotate, torsion_update
 
         pos[mask_rotate[idx_edge]] = (pos[mask_rotate[idx_edge]] - pos[v]) @ rot_mat.T + pos[v]
 
-    if not as_numpy: pos = torch.from_numpy(pos.astype(np.float32))
+    if not as_numpy:
+        pos = torch.from_numpy(pos.astype(np.float32))
+        pos = pos.to(orig_device)
+
     return pos
 
 
@@ -273,8 +280,12 @@ def add_edges(G):
 def modify_sidechain_torsion_angle(pos, edge_index, mask_subcomponent, subcomponents, torsion_update, as_numpy=False):
     # modify single sidechain torsion angle 
     pos = copy.deepcopy(pos)
-    if type(pos) != np.ndarray: pos = pos.cpu().numpy()
-    assert len(edge_index) == 2 # make sure that its just a single bond 
+    orig_device = None
+    if type(pos) != np.ndarray:
+        orig_device = pos.device
+        pos = pos.cpu().numpy()
+
+    assert len(edge_index) == 2 # make sure that its just a single bond
     if torsion_update != 0:
         u, v = edge_index[0], edge_index[1]
         mask_rotate = subcomponents[mask_subcomponent[0]:mask_subcomponent[1]]
@@ -282,27 +293,16 @@ def modify_sidechain_torsion_angle(pos, edge_index, mask_subcomponent, subcompon
 
         try:
             rot_vec = pos[u] - pos[v]  # convention: positive rotation if pointing inwards
-        except Exception as e:
-            print(e)
-            if not as_numpy: pos = torch.from_numpy(pos.astype(np.float32))
-            return pos
-            
-        rot_vec = rot_vec * torsion_update / np.linalg.norm(rot_vec) # idx_edge!
-        rot_mat = R.from_rotvec(rot_vec).as_matrix()
-        try:
+            rot_vec = rot_vec * torsion_update / np.linalg.norm(rot_vec)  # idx_edge!
+            rot_mat = R.from_rotvec(rot_vec).as_matrix()
             pos[mask_rotate] = (pos[mask_rotate] - pos[v]) @ rot_mat.T + pos[v]
         except Exception as e:
             print(f'Skipping sidechain update because of the error:')
             print(e)
-            print("pos size: ", np.size(pos))
-            print("edge_index: ", edge_index)
-            print("mask_subcomponent: ", mask_subcomponent)
-            print("subcomponents: ", subcomponents)
-            print("torsion_update: ", torsion_update)
-            print("mask_rotate: ", mask_rotate)
-            print("v: ", v)
 
+    if not as_numpy:
+        pos = torch.from_numpy(pos.astype(np.float32))
+        pos = pos.to(orig_device)
 
-    if not as_numpy: pos = torch.from_numpy(pos.astype(np.float32))
-    return pos 
+    return pos
     

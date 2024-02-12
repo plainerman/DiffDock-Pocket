@@ -410,36 +410,28 @@ class TensorProductScoreModel(torch.nn.Module):
         if num_flexible_bonds == 0:
             sc_tor_pred = torch.empty(0, device=self.device)
         else:
-            # TODO: delete this try except
-            try:
-                # Torsion in sidechains (sc)
-                sc_tor_bonds, sc_tor_edge_index, sc_tor_edge_attr, sc_tor_edge_sh, sc_tor_edge_weight = self.build_sidechain_conv_graph(data)
-                sc_tor_bond_vec = data['atom'].pos[sc_tor_bonds[1]] - data['atom'].pos[sc_tor_bonds[0]]
-                sc_tor_bond_attr = atom_node_attr[sc_tor_bonds[0]] + atom_node_attr[sc_tor_bonds[1]]
+            # Torsion in sidechains (sc)
+            sc_tor_bonds, sc_tor_edge_index, sc_tor_edge_attr, sc_tor_edge_sh, sc_tor_edge_weight = self.build_sidechain_conv_graph(data)
+            sc_tor_bond_vec = data['atom'].pos[sc_tor_bonds[1]] - data['atom'].pos[sc_tor_bonds[0]]
+            sc_tor_bond_attr = atom_node_attr[sc_tor_bonds[0]] + atom_node_attr[sc_tor_bonds[1]]
 
-                sc_tor_bonds_sh = o3.spherical_harmonics("2e", sc_tor_bond_vec, normalize=True, normalization='component')
-                sc_tor_edge_sh = self.final_tp_sc_tor(sc_tor_edge_sh, sc_tor_bonds_sh[sc_tor_edge_index[0]])
+            sc_tor_bonds_sh = o3.spherical_harmonics("2e", sc_tor_bond_vec, normalize=True, normalization='component')
+            sc_tor_edge_sh = self.final_tp_sc_tor(sc_tor_edge_sh, sc_tor_bonds_sh[sc_tor_edge_index[0]])
 
-                sc_tor_edge_attr = torch.cat([sc_tor_edge_attr, atom_node_attr[sc_tor_edge_index[1], :self.ns],
-                                           sc_tor_bond_attr[sc_tor_edge_index[0], :self.ns]], -1)
+            sc_tor_edge_attr = torch.cat([sc_tor_edge_attr, atom_node_attr[sc_tor_edge_index[1], :self.ns],
+                                       sc_tor_bond_attr[sc_tor_edge_index[0], :self.ns]], -1)
 
-                sc_tor_pred = self.sc_tor_bond_conv(atom_node_attr, sc_tor_edge_index, sc_tor_edge_attr, sc_tor_edge_sh,
-                                              out_nodes=num_flexible_bonds, reduce='mean',
-                                              edge_weight=sc_tor_edge_weight)
-                sc_tor_pred = self.sc_tor_final_layer(sc_tor_pred).squeeze(1)
+            sc_tor_pred = self.sc_tor_bond_conv(atom_node_attr, sc_tor_edge_index, sc_tor_edge_attr, sc_tor_edge_sh,
+                                          out_nodes=num_flexible_bonds, reduce='mean',
+                                          edge_weight=sc_tor_edge_weight)
+            sc_tor_pred = self.sc_tor_final_layer(sc_tor_pred).squeeze(1)
 
-                if self.scale_by_sigma:
-                    # fetch edge_sigma for each bond
-                    # TODO: this might no work when we have batched data ...
-                    edge_sigma = sidechain_tor_sigma[data["flexResidues"].batch]
-                    norm = torch.sqrt(torch.tensor(torus.score_norm(edge_sigma.cpu().numpy())).float().to(data['atom'].x.device))
-                    sc_tor_pred = sc_tor_pred * norm
-            except Exception as e:
-                print("Exception encountered while predicting flexible sidechains for", data["name"])
-                print(e)
-                print(traceback.format_exc())
-
-                raise e
+            if self.scale_by_sigma:
+                # fetch edge_sigma for each bond
+                # TODO: this might no work when we have batched data ...
+                edge_sigma = sidechain_tor_sigma[data["flexResidues"].batch]
+                norm = torch.sqrt(torch.tensor(torus.score_norm(edge_sigma.cpu().numpy())).float().to(data['atom'].x.device))
+                sc_tor_pred = sc_tor_pred * norm
 
         return tr_pred, rot_pred, tor_pred, sc_tor_pred
 

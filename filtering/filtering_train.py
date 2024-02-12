@@ -10,7 +10,11 @@ from argparse import Namespace, ArgumentParser, FileType
 import numpy as np
 import torch.nn.functional as F
 
-import wandb
+try:
+    import wandb
+except ImportError:
+    print(f"wandb not installed, cannot use wandb features")
+
 import torch
 from sklearn.metrics import roc_auc_score
 from torch_geometric.loader import DataListLoader, DataLoader
@@ -469,7 +473,6 @@ if __name__ == '__main__':
         if not hasattr(score_model_args, 'esm_embeddings_path'):  # exists for compatibility
             score_model_args.esm_embeddings_path = None
 
-    # TODO: Can we get this away? Because we might not be using the flexibility in the original model
     # Sidechain configuration is specified by the original model
     args.flexible_sidechains = score_model_args.flexible_sidechains
     args.flexdist = score_model_args.flexdist

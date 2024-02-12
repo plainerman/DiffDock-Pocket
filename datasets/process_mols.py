@@ -1,6 +1,8 @@
 import copy
+import logging
 import os
 import warnings
+from functools import wraps
 
 import Bio
 import numpy as np
@@ -242,6 +244,7 @@ def parse_receptor(pdbid, pdbbind_dir, use_full_size_file, use_original_protein_
 
     return rec, rec_match
 
+
 def parse_crosstest_receptor(line, pdbbind_dir, use_full_size_file, use_original_protein_file, protein_file, conformer_match_sidechains, match_protein_file, compare_true_protein):
     path = line.split(",")
     rec_path = os.path.join(pdbbind_dir, path[0], path[1].split(".")[0] + protein_file)
@@ -264,8 +267,8 @@ def _get_pdb_rec_path(pdbid, pdbbind_dir,use_full_size_file, use_original_protei
     return rec_path
 
 
-def parsePDB(pdbid, pdbbind_dir,use_full_size_file, use_original_protein_file, protein_file="protein_processed"):
-    rec_path = _get_pdb_rec_path(pdbid, pdbbind_dir,use_full_size_file, use_original_protein_file, protein_file)
+def parsePDB(pdbid, pdbbind_dir, use_full_size_file, use_original_protein_file, protein_file="protein_processed"):
+    rec_path = _get_pdb_rec_path(pdbid, pdbbind_dir, use_full_size_file, use_original_protein_file, protein_file)
     return parse_pdb_from_path(rec_path)
 
 
@@ -276,12 +279,12 @@ def parse_pdb_from_path(path):
 def parse_pdb_structure_from_path(path):
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=PDBConstructionWarning)
-        structure = biopython_parser.get_structure('random_id', path)
+        structure = biopython_parser.get_structure(os.path.basename(path), path)
         return structure
 
 
 def parsePDBStructure(pdbid, pdbbind_dir,use_full_size_file, use_original_protein_file, protein_file="protein_processed"):
-    rec_path = _get_pdb_rec_path(pdbid, pdbbind_dir,use_full_size_file, use_original_protein_file, protein_file)
+    rec_path = _get_pdb_rec_path(pdbid, pdbbind_dir, use_full_size_file, use_original_protein_file, protein_file)
     return parse_pdb_structure_from_path(rec_path)
 
 
@@ -296,6 +299,7 @@ def extract_receptor_structure(rec, lig, cutoff, lm_embedding_chains=None, inclu
     misc_coords = []
     misc_features = []
     valid_chain_ids = []
+    all_chain_ids = []
     lengths = []
     discarded_res_ids = {}
     for i, chain in enumerate(rec):
@@ -365,13 +369,14 @@ def extract_receptor_structure(rec, lig, cutoff, lm_embedding_chains=None, inclu
         c_alpha_coords.append(np.array(chain_c_alpha_coords))
         n_coords.append(np.array(chain_n_coords))
         c_coords.append(np.array(chain_c_coords))
+        all_chain_ids.append(chain.get_id())
         if min_distance < cutoff:
             valid_chain_ids.append(chain.get_id())
         misc_coords.append(chain_misc_coords)
         misc_features.append(chain_misc_features)
     min_distances = np.array(min_distances)
-    if len(valid_chain_ids) == 0: # this does not actually work because it only appends the index of the closest chain while it should actually append the letter chain id such as 'A'.
-        valid_chain_ids.append(np.argmin(min_distances))
+    if len(valid_chain_ids) == 0:
+        valid_chain_ids.append(all_chain_ids[np.argmin(min_distances)])
     valid_coords = []
     valid_c_alpha_coords = []
     valid_n_coords = []
@@ -765,28 +770,7 @@ def read_molecule(molecule_file, sanitize=False, calc_charges=False, remove_hs=F
     return mol
 
 
-def read_sdf_or_mol2(sdf_fileName, mol2_fileName):
-
-    mol = Chem.MolFromMolFile(sdf_fileName, sanitize=False)
-    problem = False
-    try:
-        Chem.SanitizeMol(mol)
-        mol = Chem.RemoveHs(mol)
-    except Exception as e:
-        problem = True
-    if problem:
-        mol = Chem.MolFromMol2File(mol2_fileName, sanitize=False)
-        try:
-            Chem.SanitizeMol(mol)
-            mol = Chem.RemoveHs(mol)
-            problem = False
-        except Exception as e:
-            problem = True
-
-    return mol, problem
-
-
-def get_sidechain_rotation_masks(rec,  accept_atom_function, remove_hs=False, true_model=None, true_model_matching=None):
+def get_sidechain_rotation_masks(rec, accept_atom_function, remove_hs=False, true_model=None, true_model_matching=None):
     """
     find all sidechains within a specified flexdist of the pocket and compute an ordered rotation mask
     such that the sidechain torsions are applied from the Ca downwards
@@ -831,7 +815,7 @@ def get_sidechain_rotation_masks(rec,  accept_atom_function, remove_hs=False, tr
                     cur_residue = atom.get_parent()
                     true_res = true_model_matching[(cur_residue.parent.id, cur_residue.id[1])]
 
-                    assert(cur_residue.get_resname() == true_res.get_resname()), "There is a mismatch in the residues"
+                    assert cur_residue.get_resname() == true_res.get_resname(), "There is a mismatch in the residues"
 
                 # get rotatable bonds and their rotation mask
                 flexResidues[flexResIdx] = get_sidechain_rotation_mask(atom.get_parent(), i, true_res)
@@ -840,8 +824,12 @@ def get_sidechain_rotation_masks(rec,  accept_atom_function, remove_hs=False, tr
         except Exception as e:
             print(f"Skipping residue {atom.get_parent()} because of the error:", e)
 
-            
-    print(f"Flexible residues: {'-'.join(resNames)}")
+    logging.debug(f"Flexible residues: {'-'.join(resNames)}")
+    if len(resNames) == 0:
+        logging.warning(f"Found {len(resNames)} flexible residues in receptor {rec.get_full_id()}. "
+                        f"This is likely to lead to errors downstream. "
+                        f"It may be a sign of misaligned coordinates between the receptor and ligand. ")
+
     # move into tensors for now 
     subcomponentsMerged = []
     edge_idx_merged = []
@@ -924,3 +912,23 @@ def set_sidechain_rotation_masks(complex_graph, rec, accept_atom_function, remov
     complex_graph["flexResidues"].num_nodes = complex_graph["flexResidues"].edge_idx.shape[0]
 
     return complex_graph
+
+
+def count_pdb_warnings(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with warnings.catch_warnings(record=True) as w:
+            # Trigger a warning to be caught
+            warnings.simplefilter('always', PDBConstructionWarning)
+
+            # Call the function
+            result = func(*args, **kwargs)
+
+            # Count specific warnings
+            num_warnings = len([warn for warn in w if warn.category == PDBConstructionWarning])
+            if num_warnings > 0:
+                logging.warning(f"Number of PDBConstructionWarnings in {func.__name__}: {num_warnings}")
+
+            return result
+
+    return wrapper

@@ -1,6 +1,7 @@
 
 from argparse import ArgumentParser,FileType
 
+
 def parse_train_args():
 
     # General arguments
@@ -9,7 +10,8 @@ def parse_train_args():
     parser.add_argument('--log_dir', type=str, default='workdir', help='Folder in which to save model and logs')
     parser.add_argument('--restart_dir', type=str, help='Folder of previous training model from which to restart')
     parser.add_argument('--cache_path', type=str, default='data/cacheNew', help='Folder from where to load/restore cached dataset')
-    parser.add_argument('--data_dir', type=str, default='data/PDBBind_processed/', help='Folder containing original structures')
+    parser.add_argument('--protein_ligand_csv', type=str, default=None, help='CSV table containing paths to structures')
+    # parser.add_argument('--root', type=str, default="", help='Paths in the protein_ligand_csv are relative to this root')
     parser.add_argument('--split_train', type=str, default='data/splits/timesplit_no_lig_overlap_train', help='Path of file defining the split')
     parser.add_argument('--split_val', type=str, default='data/splits/timesplit_no_lig_overlap_val', help='Path of file defining the split')
     parser.add_argument('--split_test', type=str, default='data/splits/timesplit_test', help='Path of file defining the split')
@@ -73,8 +75,8 @@ def parse_train_args():
     parser.add_argument('--conformer_match_score', type=str, default="dist", help='The scoring function used for conformer matching. Can be either "dist", "nearest" or "exp". All take the distance to the holo structure, nearest and exp also optimize steric clashes. Nearest takes the closest steric clash, exp weights the steric clashes with something similar to an rbf kernel.')
     parser.add_argument('--compare_true_protein', action='store_true', default = False, help="whether to calculate the rmsd to the holo structure (i.e., match_protein_file). this is only possible with flexible sidechains and if the proein_file is an apo structure. This is only applied to the validation set")
     parser.add_argument('--match_max_rmsd', type=float, default=2.0, help='Specify the maximum RMSD when conformer matching sidechains. This RMSD will only be calculated in the pocket with pocket_buffer. This parameter only influences the training set, and has no impact on validation.')
-    parser.add_argument('--use_original_conformer', action='store_true', default=False, help='use the original conformer structure for training if the matching rmsd is further away than match_max_rmsd value')
-    parser.add_argument('--use_original_conformer_fallback', action='store_true', default=False, help='use the original conformer structure for training if the protein_file does not exist. This only effects training.')
+    parser.add_argument('--use_original_conformer', action='store_true', default=False, help='use the experimental structure for training if the matching rmsd is further away than match_max_rmsd value')
+    parser.add_argument('--use_original_conformer_fallback', action='store_true', default=False, help='use the experimental structure for training if the computational protein_file does not exist. This only effects training.')
 
     # Diffusion
     parser.add_argument('--tr_weight', type=float, default=0.25, help='Weight of translation loss')

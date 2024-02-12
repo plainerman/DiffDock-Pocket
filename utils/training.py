@@ -1,4 +1,5 @@
 import copy
+import logging
 
 import numpy as np
 from torch_geometric.loader import DataLoader
@@ -131,7 +132,9 @@ class AverageMeter():
 
     def summary(self):
         if self.intervals == 1:
-            out = {k: v.item() / self.count for k, v in self.acc.items()}
+            out = {}
+            for k, v in self.acc.items():
+                out[k] = v.item() / self.count if self.count > 0 else 0
             return out
         else:
             out = {}
@@ -146,8 +149,11 @@ def train_epoch(model, loader, optimizer, device, t_to_sigma, loss_fn, ema_weigt
     model.train()
     meter = AverageMeter(['loss', 'tr_loss', 'rot_loss', 'tor_loss', 'sc_tor_loss','tr_base_loss', 'rot_base_loss', 'tor_base_loss','sc_tor_base_loss'])
 
-    for data in tqdm(loader, total=len(loader)):
-        if device.type == 'cuda' and len(data) == 1 or device.type == 'cpu' and data.num_graphs == 1:
+    for data_row in tqdm(loader, total=len(loader)):
+        data = data_row
+        logging.debug(f"Batch size: {len(data)}. Batch data type: {type(data)}")
+        # On CPU data is a batch of graphs, on GPU it is a list of graphs (?)
+        if (device.type == 'cuda' and len(data) == 1) or (device.type == 'cpu' and data.num_graphs == 1):
             print("Skipping batch of size 1 since otherwise batchnorm would not work.")
         optimizer.zero_grad()
         try:
@@ -161,16 +167,18 @@ def train_epoch(model, loader, optimizer, device, t_to_sigma, loss_fn, ema_weigt
                 loss.backward()
                 optimizer.step()
                 ema_weigths.update(model.parameters())
-                meter.add([loss.cpu().detach(), tr_loss, rot_loss, tor_loss, sc_tor_loss, tr_base_loss, rot_base_loss, tor_base_loss, sc_tor_base_loss])
+                cur_losses = [loss.cpu().detach(), tr_loss, rot_loss, tor_loss, sc_tor_loss, tr_base_loss, rot_base_loss, tor_base_loss, sc_tor_base_loss]
+                meter.add(cur_losses)
+
         except RuntimeError as e:
-            if 'out of memory' in str(e):
+            if 'out of memory' in str(e).lower():
                 print('| WARNING: ran out of memory, skipping batch')
                 for p in model.parameters():
                     if p.grad is not None:
                         del p.grad  # free some memory
                 torch.cuda.empty_cache()
                 continue
-            elif 'Input mismatch' in str(e):
+            elif 'input mismatch' in str(e).lower():
                 print('| WARNING: weird torch_cluster error, skipping batch')
                 for p in model.parameters():
                     if p.grad is not None:
@@ -249,7 +257,8 @@ def test_epoch(model, loader, device, t_to_sigma, loss_fn, test_sigma_intervals=
     return out
 
 
-def inference_epoch_fix(model, complex_graphs, device, t_to_sigma, args):
+def inference_epoch_fix(model, dataset, device, t_to_sigma, args):
+    logging.debug(f"Inference_epoch_fix Dataset type: {type(dataset)}. Size: {len(dataset)}")
     t_schedule = get_t_schedule(sigma_schedule='expbeta', inference_steps=args.inference_steps,
                                 inf_sched_alpha=1, inf_sched_beta=1)
     if args.asyncronous_noise_schedule:
@@ -260,7 +269,6 @@ def inference_epoch_fix(model, complex_graphs, device, t_to_sigma, args):
     else:
         tr_schedule, rot_schedule, tor_schedule, sidechain_tor_schedule = t_schedule, t_schedule, t_schedule, t_schedule
 
-    dataset = ListDataset(complex_graphs)
     loader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
     rmsds = []
     rec_lig_steric_clashes = []

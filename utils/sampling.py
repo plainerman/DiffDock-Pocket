@@ -31,11 +31,16 @@ def randomize_position(data_list, no_torsion, no_random, tr_sigma_max, pocket_kn
         # randomize torsion angles
         for complex_graph in data_list:
             torsion_updates = np.random.uniform(low=-np.pi, high=np.pi, size=complex_graph['ligand'].edge_mask.sum())
+            mask_rotate = complex_graph['ligand'].mask_rotate
+            if not isinstance(mask_rotate, np.ndarray):
+                mask_rotate = mask_rotate[0]
+            edge_mask = complex_graph['ligand', 'ligand'].edge_index.T[complex_graph['ligand'].edge_mask]
+
             complex_graph['ligand'].pos = \
                 modify_conformer_torsion_angles(complex_graph['ligand'].pos,
-                                                complex_graph['ligand', 'ligand'].edge_index.T[
-                                                    complex_graph['ligand'].edge_mask],
-                                                complex_graph['ligand'].mask_rotate[0], torsion_updates)
+                                                edge_mask,
+                                                mask_rotate,
+                                                torsion_updates)
     
     if flexible_sidechains:
         for complex_graph in data_list:
@@ -44,13 +49,14 @@ def randomize_position(data_list, no_torsion, no_random, tr_sigma_max, pocket_kn
 
     for complex_graph in data_list:
         # randomize position
+        device = complex_graph['ligand'].pos.device
         molecule_center = torch.mean(complex_graph['ligand'].pos, dim=0, keepdim=True)
-        random_rotation = torch.from_numpy(R.random().as_matrix()).float()
+        random_rotation = torch.from_numpy(R.random().as_matrix()).float().to(device)
         complex_graph['ligand'].pos = (complex_graph['ligand'].pos - molecule_center) @ random_rotation.T + center_pocket
         # base_rmsd = np.sqrt(np.sum((complex_graph['ligand'].pos.cpu().numpy() - orig_complex_graph['ligand'].pos.numpy()) ** 2, axis=1).mean())
 
         if not no_random:  # note for now the torsion angles are still randomised
-            tr_update = torch.normal(mean=0, std=tr_sigma_max, size=(1, 3))
+            tr_update = torch.normal(mean=0, std=tr_sigma_max, size=(1, 3)).to(device)
             complex_graph['ligand'].pos += tr_update
 
 
@@ -183,7 +189,7 @@ def sampling(data_list, model, inference_steps, tr_schedule, rot_schedule, tor_s
             lambda_tor = (tor_sigma_data + tor_sigma) / (tor_sigma_data + tor_sigma/temp_sampling[2])
             tor_perturb = (tor_g ** 2 * dt_tor * (lambda_tor + temp_sampling[2] * temp_psi[2] / 2) * tor_score.cpu() + tor_g * np.sqrt(dt_tor * (1 + temp_psi[2])) * tor_z).cpu().numpy()
 
-        if temp_sampling[3] != 1.0:
+        if flexible_sidechains and temp_sampling[3] != 1.0:
             sidechain_tor_sigma_data = np.exp(temp_sigma_data * np.log(model_args.sidechain_tor_sigma_max) + (1-temp_sigma_data) * np.log(model_args.sidechain_tor_sigma_min))
             lambda_sidechain_tor = (sidechain_tor_sigma_data + sidechain_tor_sigma) / (sidechain_tor_sigma_data + sidechain_tor_sigma/temp_sampling[3])
             sidechain_tor_perturb = (sidechain_tor_g ** 2 * dt_sidechain_tor * (lambda_sidechain_tor + temp_sampling[3] * temp_psi[3] / 2) * sidechain_tor_score.cpu() + sidechain_tor_g * np.sqrt(dt_sidechain_tor * (1 + temp_psi[3])) * sidechain_tor_z).cpu().numpy()
@@ -252,8 +258,7 @@ def sampling(data_list, model, inference_steps, tr_schedule, rot_schedule, tor_s
         if sidechain_visualization_list is not None:
             for idx, visualization in enumerate(sidechain_visualization_list):
                 # append all subcomponents (i.e., sidechain data)
-                visualization.append(data_list[idx][0]["atom"].pos
-                                     + data_list[idx][0]["original_center"])
+                visualization.append(data_list[idx]["atom"].pos + data_list[idx]["original_center"])
 
     with torch.no_grad():
         if confidence_model is not None:
