@@ -31,6 +31,10 @@ from utils.visualise import PDBFile, SidechainPDBFile
 from tqdm import tqdm
 from utils import esm as esm_utils
 from utils.download import download_and_extract
+from utils.posebusters_em import optimize_ligand_in_pocket
+from pathlib import Path
+from openmm.unit import megajoule, mole
+
 
 if os.name != 'nt':  # The line does not work on Windows
     import resource
@@ -41,19 +45,21 @@ RDLogger.DisableLog('rdApp.*')
 
 REPOSITORY_URL = 'https://github.com/plainerman/DiffDock-Pocket'
 
+
 def _get_parser():
     parser = ArgumentParser()
     parser.add_argument('--config', type=FileType(mode='r'), default=None)
     parser.add_argument('--complex_name', type=str, default='unnamed_complex', help='Name that the complex will be saved with')
     parser.add_argument('--protein_ligand_csv', type=str, default=None, help='Path to a .csv file specifying the input as described in the README. If this is not None, it will be used instead of the --protein_path and --ligand parameters')
     parser.add_argument('--protein_path', '--experimental_protein', type=str, default=None, help='Path to the protein .pdb file')
-    # parser.add_argument('--protein_sequence', type=str, default=None, help='Sequence of the protein for ESMFold, this is ignored if --protein_path is not None') #TODO: implement protein_sequence
+
     parser.add_argument('--ligand', type=str, default='COc(cc1)ccc1C#N', help='Either a SMILES string or the path to a molecule file that rdkit can read')
     parser.add_argument('--flexible_sidechains', type=str, default=None, help='Specify which amino acids will be flexible. E.g., A:130-B:140 will make amino acid with id 130 in chain A, and id 140 in chain B flexible.')
     parser.add_argument('--out_dir', type=str, default='results/user_inference', help='Directory where the outputs will be written to')
     parser.add_argument('--save_visualisation', action='store_true', default=False, help='Save a pdb file with all of the steps of the reverse diffusion')
     parser.add_argument('--samples_per_complex', type=int, default=10, help='Number of samples to generate')
     parser.add_argument('--rigid', action='store_true', default=False, help='Override the arguments of the model and use a rigid model. Caution: In our tests this resulted in worse performance.')
+    parser.add_argument('--relax', action='store_true', default=False, help='Perform energy minimization on the top-1 ligand pose. See https://github.com/maabuu/posebusters_em for more information.')
 
     parser.add_argument('--pocket_center_x', type=float, default=None, help='The x coordinate for the pocket center')
     parser.add_argument('--pocket_center_y', type=float, default=None, help='The x coordinate for the pocket center')
@@ -213,20 +219,50 @@ def infer_single_complex(idx: int, protein_ligand_info_row: Mapping, model: torc
             atom_pos = atom_pos[re_order]
 
         os.makedirs(write_dir, exist_ok=True)
+        ligand_path = None
         for rank, pos in enumerate(ligand_pos):
             mol_pred = copy.deepcopy(lig)
             if score_model_args.remove_hs: mol_pred = RemoveHs(mol_pred)
             if rank == 0:
-                write_mol_with_coords(mol_pred, pos, os.path.join(write_dir, f'rank{rank + 1}.sdf'))
+                ligand_path = os.path.join(write_dir, f'rank{rank + 1}.sdf')
+                write_mol_with_coords(mol_pred, pos, ligand_path)
             write_mol_with_coords(mol_pred, pos,
                                   os.path.join(write_dir, f'rank{rank + 1}_confidence{confidence[rank]:.2f}.sdf'))
 
+        # if flexibility is enabled, this will be changed to the predicted flexible protein
+        protein_path = protein_ligand_info_row['experimental_protein']
         if not args.rigid and score_model_args.flexible_sidechains:
             for rank, pos in enumerate(atom_pos):
                 out = SidechainPDBFile(copy.deepcopy(rec_struc), data_list[rank]['flexResidues'], [atom_pos[rank]])
                 if rank == 0:
-                    out.write(os.path.join(write_dir, f'rank{rank + 1}_protein.pdb'))
+                    protein_path = os.path.join(write_dir, f'rank{rank + 1}_protein.pdb')
+                    out.write(protein_path)
                 out.write(os.path.join(write_dir, f'rank{rank + 1}_confidence{confidence[rank]:.2f}_protein.pdb'))
+
+        if args.relax:
+            if ligand_path is None:
+                raise ValueError("The ligand path is not set. This should not happen.")
+            if protein_path is None:
+                raise ValueError("The protein path is not set. This should not happen.")
+
+            opt = optimize_ligand_in_pocket(
+                protein_file=Path(protein_path),
+                ligand_file=Path(ligand_path),
+                output_file=Path(ligand_path).with_name('rank1_relaxed.sdf'),
+                temp_base_dir=args.cache_path,
+                add_solvent=False,
+                name=orig_complex_graph.name,
+            )
+
+            energy_before = opt["energy_before"].value_in_unit(megajoule / mole)
+            energy_after = opt["energy_after"].value_in_unit(megajoule / mole)
+
+            print(
+                f"{Path(ligand_path)} has been relaxed with protein {Path(protein_path)}, "
+                + f"E_start: {energy_before:.2f} MJ/mol, "
+                + f"E_end: {energy_after:.2f} MJ/mol, "
+                + f"ΔE: {energy_after - energy_before:.2f} MJ/mol"
+            )
 
         if args.save_visualisation:
             if confidence is not None:

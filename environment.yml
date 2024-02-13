@@ -6,7 +6,7 @@ channels:
   - defaults
   - conda-forge
 dependencies:
-  - python=3.9.17
+  - python=3.9
   - pip=23.3.1
   - pytorch=1.13.1
   - torchvision=0.14.1
@@ -17,12 +17,17 @@ dependencies:
   - pytorch-sparse=0.6.17
   - pytorch-cluster=1.6.1
   - pytorch-spline-conv=1.2.2
+  - openmm=8.1.1
+  - openmmforcefields=0.11.2
+  - openff-forcefields=2023.11.0
+  - openff-interchange=0.3.18
+  - openff-toolkit=0.14.5
   - pdbfixer=1.9
   - pip:
     - e3nn==0.5.1
     - PyYAML==6.0.1
     - rdkit==2023.3.3
-    - pandas==2.1.1 
+    - pandas==2.1.1
     - biopython==1.81
     - networkx==3.2
     - spyrmsd==0.6.0
