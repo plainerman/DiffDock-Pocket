@@ -30,6 +30,7 @@ from utils.utils import get_model, get_available_devices, get_default_device, en
 from utils.visualise import PDBFile, SidechainPDBFile
 from tqdm import tqdm
 from utils import esm as esm_utils
+from utils.download import download_and_extract
 
 if os.name != 'nt':  # The line does not work on Windows
     import resource
@@ -38,6 +39,7 @@ if os.name != 'nt':  # The line does not work on Windows
 
 RDLogger.DisableLog('rdApp.*')
 
+REPOSITORY_URL = 'https://github.com/plainerman/DiffDock-Pocket'
 
 def _get_parser():
     parser = ArgumentParser()
@@ -57,13 +59,15 @@ def _get_parser():
     parser.add_argument('--pocket_center_y', type=float, default=None, help='The x coordinate for the pocket center')
     parser.add_argument('--pocket_center_z', type=float, default=None, help='The x coordinate for the pocket center')
 
-    parser.add_argument('--model_dir', type=str, default='workdir/paper_score_model', help='Path to folder with trained score model and hyperparameters')
+    parser.add_argument('--tag', type=str, default='v1.0.0', help='GitHub release tag that will be used to download a model if none is specified.')
+    parser.add_argument('--model_cache_dir', type=str, default='.cache/model', help='Folder from where to load/restore the trained model')
+    parser.add_argument('--model_dir', type=str, default=None, help='Path to folder with trained score model and hyperparameters')
     parser.add_argument('--ckpt', type=str, default='best_ema_inference_epoch_model.pt', help='Checkpoint to use for the score model')
-    parser.add_argument('--filtering_model_dir', type=str, default='workdir/paper_confidence_model', help='Path to folder with trained confidence model and hyperparameters')
+    parser.add_argument('--filtering_model_dir', type=str, default=None, help='Path to folder with trained confidence model and hyperparameters')
     parser.add_argument('--filtering_ckpt', type=str, default='best_model.pt', help='Checkpoint to use for the confidence model')
 
     parser.add_argument('--batch_size', type=int, default=32, help='')
-    parser.add_argument('--cache_path', type=str, default='data/cache', help='Folder from where to load/restore cached dataset')
+    parser.add_argument('--cache_path', type=str, default='.cache/data', help='Folder from where to load/restore cached dataset')
     parser.add_argument('--no_random', action='store_true', default=False, help='Use no randomness in reverse diffusion')
     parser.add_argument('--no_final_step_noise', action='store_true', default=False, help='Use no noise in the final step of the reverse diffusion')
     parser.add_argument('--ode', action='store_true', default=False, help='Use ODE formulation for inference')
@@ -277,13 +281,23 @@ def main(args):
 
     os.makedirs(args.out_dir, exist_ok=True)
 
+    if args.model_dir is None or args.filtering_dir is None:
+        base_model_dir = os.path.join(args.model_cache_dir, args.tag)
+        os.makedirs(base_model_dir, exist_ok=True)
+
+        if args.model_dir is None:
+            logging.debug(f'--model_dir is not set. Using tag: {args.tag}')
+            args.model_dir = download_and_extract(f'{REPOSITORY_URL}/releases/download/{args.tag}/score_model.zip', base_model_dir, 'score_model')
+
+        if args.filtering_model_dir is None:
+            logging.debug(f'--filtering_model_dir is not set. Using tag: {args.tag}')
+            args.filtering_model_dir = download_and_extract(f'{REPOSITORY_URL}/releases/download/{args.tag}/confidence_model.zip', base_model_dir, 'confidence_model')
+
     with open(f'{args.model_dir}/model_parameters.yml') as f:
         score_model_args = Namespace(**yaml.full_load(f))
 
-    filtering_args = None
-    if args.filtering_model_dir is not None:
-        with open(f'{args.filtering_model_dir}/model_parameters.yml') as f:
-            filtering_args = Namespace(**yaml.full_load(f))
+    with open(f'{args.filtering_model_dir}/model_parameters.yml') as f:
+        filtering_args = Namespace(**yaml.full_load(f))
 
     if args.protein_ligand_csv is not None:
         protein_ligand_df = load_protein_ligand_df(args.protein_ligand_csv, strict=False)
