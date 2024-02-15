@@ -135,11 +135,6 @@ def get_steric_clash_atom_pairs(mol_1, mol_2, elements_1, elements_2, filter1=No
     return cross_distances < ramanchandran_radii
 
 
-def get_steric_clash_fraction(mol_1, mol_2, elements_1, elements_2, N=1):
-    steric_clash_atom_pairs = np.sum(get_steric_clash_atom_pairs(mol_1, mol_2, elements_1, elements_2, N), axis=(1, 2))
-    return np.sum(steric_clash_atom_pairs > 0) / N
-
-
 def get_steric_clash_per_flexble_sidechain_atom(complex_graph, rec_rest = True):
     rec_sc_rec_rest_steric_clashes = []
     sidechain_atoms = np.array([], dtype=int)

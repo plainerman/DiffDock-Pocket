@@ -284,34 +284,3 @@ def sampling(data_list, model, inference_steps, tr_schedule, rot_schedule, tor_s
     if return_full_trajectory:
         return data_list, confidence, trajectory, sidechain_trajectory
     return data_list, confidence
-
-
-def compute_affinity(data_list, affinity_model, affinity_data_list, device, parallel, all_atoms, include_miscellaneous_atoms):
-
-    with torch.no_grad():
-        if affinity_model is not None:
-            assert parallel <= len(data_list)
-            loader = DataLoader(data_list, batch_size=parallel)
-            complex_graph_batch = next(iter(loader)).to(device)
-            positions = complex_graph_batch['ligand'].pos
-
-            assert affinity_data_list is not None
-            complex_graph = affinity_data_list[0]
-            N = complex_graph['ligand'].num_nodes
-            complex_graph['ligand'].x = complex_graph['ligand'].x.repeat(parallel, 1)
-            complex_graph['ligand'].edge_mask = complex_graph['ligand'].edge_mask.repeat(parallel)
-            complex_graph['ligand', 'ligand'].edge_index = torch.cat(
-                [N * i + complex_graph['ligand', 'ligand'].edge_index for i in range(parallel)], dim=1)
-            complex_graph['ligand', 'ligand'].edge_attr = complex_graph['ligand', 'ligand'].edge_attr.repeat(parallel, 1)
-            complex_graph['ligand'].pos = positions
-
-            affinity_loader = DataLoader([complex_graph], batch_size=1)
-            affinity_batch = next(iter(affinity_loader)).to(device)
-            set_time(affinity_batch, 0, 0, 0, 0, 1, all_atoms, True, device, include_miscellaneous_atoms=include_miscellaneous_atoms)
-            _, affinity = affinity_model(affinity_batch)
-        else:
-            affinity = None
-
-    return affinity
-
-

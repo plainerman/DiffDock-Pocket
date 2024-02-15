@@ -60,24 +60,6 @@ def modify_conformer(data, tr_update, rot_update, torsion_updates, pivot=None):
     return data
 
 
-def modify_conformer_coordinates(pos, tr_update, rot_update, torsion_updates, edge_mask, mask_rotate, edge_index):
-    # Made this function which does the same as modify_conformer because passing a graph would require
-    # creating a new heterograph for reach graph when unbatching a batch of graphs
-    lig_center = torch.mean(pos, dim=0, keepdim=True)
-    rot_mat = axis_angle_to_matrix(rot_update.squeeze())
-    rigid_new_pos = (pos - lig_center) @ rot_mat.T + tr_update + lig_center
-
-    if torsion_updates is not None:
-        flexible_new_pos = modify_conformer_torsion_angles(rigid_new_pos,edge_index.T[edge_mask],mask_rotate \
-            if isinstance(mask_rotate, np.ndarray) else mask_rotate[0], torsion_updates).to(rigid_new_pos.device)
-
-        R, t = rigid_transform_Kabsch_3D_torch(flexible_new_pos.T, rigid_new_pos.T)
-        aligned_flexible_pos = flexible_new_pos @ R.T + t.T
-        return aligned_flexible_pos
-    else:
-        return rigid_new_pos
-
-
 def modify_sidechains(data, torsion_updates):
     # iterate over all torsion updates and modify the corresponding atoms 
     for i, torsion_update in enumerate(torsion_updates):

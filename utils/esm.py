@@ -115,24 +115,6 @@ def get_sequences(protein_files) -> List[Optional[str]]:
     return new_sequences
 
 
-def compute_esm_embeddings_df(df, column="esm_embeddings"):
-    if column in df.columns:
-        return df
-    # Create the ESM embeddings for proteins
-    print(f"Computing ESM embeddings for {len(df)} proteins...")
-    esm_embeddings = esm_embeddings_from_complexes(df["complex_name"],
-                                                   df["experimental_protein"])
-
-    # Set the ESM embeddings in the dataframe
-    # Need to be careful with this because the ESM embeddings are a list of lists,
-    # pandas seems to want one element per row rather than one list.
-    df[column] = None
-    df[column] = df[column].astype(object)
-    df[column] = esm_embeddings
-
-    return df
-
-
 @ensure_device
 def compute_ESM_embeddings(model, alphabet, labels, sequences, device=None) -> Dict[str, torch.Tensor]:
     # settings used
@@ -204,34 +186,3 @@ def esm_embeddings_from_complexes(complex_names, protein_files, device=None) -> 
 
     del model
     return lm_embeddings_list
-
-
-def generate_ESM_structure(model, filename, sequence):
-    model.set_chunk_size(256)
-    chunk_size = 256
-    output = None
-
-    while output is None:
-        try:
-            with torch.no_grad():
-                output = model.infer_pdb(sequence)
-
-            with open(filename, "w") as f:
-                f.write(output)
-                print("saved", filename)
-        except RuntimeError as e:
-            if 'out of memory' in str(e):
-                print('| WARNING: ran out of memory on chunk_size', chunk_size)
-                for p in model.parameters():
-                    if p.grad is not None:
-                        del p.grad  # free some memory
-                torch.cuda.empty_cache()
-                chunk_size = chunk_size // 2
-                if chunk_size > 2:
-                    model.set_chunk_size(chunk_size)
-                else:
-                    print("Not enough memory for ESMFold")
-                    break
-            else:
-                raise e
-    return output is not None

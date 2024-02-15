@@ -945,18 +945,6 @@ def read_mol(pdbbind_dir, name, remove_hs=False):
     return lig
 
 
-def read_crosstest_lig(pdbbind_dir, line, remove_hs=False):
-    path = line.split(",")
-    lig = read_molecule(os.path.join(pdbbind_dir, path[0], path[2]), remove_hs=remove_hs, sanitize=True)
-
-    pocket = None
-    if len(path) >= 6:
-        pocket_x, pocket_y, pocket_z = float(path[3]), float(path[4]), float(path[5])
-        pocket = torch.tensor([pocket_x, pocket_y, pocket_z], dtype=torch.float32)
-
-    return [(lig, pocket)]
-
-
 def read_mols(pdbbind_dir, name, remove_hs=False):
     ligs = []
     for file in os.listdir(os.path.join(pdbbind_dir, name)):

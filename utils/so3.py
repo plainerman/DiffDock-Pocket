@@ -13,11 +13,6 @@ X_N = 2000
 
 omegas = np.linspace(0, np.pi, X_N + 1)[1:]
 
-
-def _compose(r1, r2):  # R1 @ R2 but for Euler vecs
-    return Rotation.from_matrix(Rotation.from_rotvec(r1).as_matrix() @ Rotation.from_rotvec(r2).as_matrix()).as_rotvec()
-
-
 def _expansion(omega, eps, L=2000):  # the summation term only
     p = 0
     for l in range(L):

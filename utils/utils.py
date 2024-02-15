@@ -26,96 +26,11 @@ from utils.diffusion_utils import get_timestep_embedding
 from spyrmsd import rmsd, molecule
 
 
-def get_obrmsd(mol1_path, mol2_path, cache_name=None):
-    cache_name = datetime.now().strftime('date%d-%m_time%H-%M-%S.%f') if cache_name is None else cache_name
-    os.makedirs(".openbabel_cache", exist_ok=True)
-    if not isinstance(mol1_path, str):
-        MolToPDBFile(mol1_path, '.openbabel_cache/obrmsd_mol1_cache.pdb')
-        mol1_path = '.openbabel_cache/obrmsd_mol1_cache.pdb'
-    if not isinstance(mol2_path, str):
-        MolToPDBFile(mol2_path, '.openbabel_cache/obrmsd_mol2_cache.pdb')
-        mol2_path = '.openbabel_cache/obrmsd_mol2_cache.pdb'
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        return_code = subprocess.run(f"obrms {mol1_path} {mol2_path} > .openbabel_cache/obrmsd_{cache_name}.rmsd",
-                                     shell=True)
-        print(return_code)
-    obrms_output = read_strings_from_txt(f".openbabel_cache/obrmsd_{cache_name}.rmsd")
-    rmsds = [line.split(" ")[-1] for line in obrms_output]
-    return np.array(rmsds, dtype=np.float)
-
-
-def remove_all_hs(mol):
-    params = Chem.RemoveHsParameters()
-    params.removeAndTrackIsotopes = True
-    params.removeDefiningBondStereo = True
-    params.removeDegreeZero = True
-    params.removeDummyNeighbors = True
-    params.removeHigherDegrees = True
-    params.removeHydrides = True
-    params.removeInSGroups = True
-    params.removeIsotopes = True
-    params.removeMapped = True
-    params.removeNonimplicit = True
-    params.removeOnlyHNeighbors = True
-    params.removeWithQuery = True
-    params.removeWithWedgedBond = True
-    return RemoveHs(mol, params)
-
-
 def read_strings_from_txt(path):
     # every line will be one element of the returned list
     with open(path) as file:
         lines = file.readlines()
         return [line.rstrip() for line in lines]
-
-
-def unbatch(src, batch: Tensor, dim: int = 0) -> List[Tensor]:
-    r"""Splits :obj:`src` according to a :obj:`batch` vector along dimension
-    :obj:`dim`.
-
-    Args:
-        src (Tensor): The source tensor.
-        batch (LongTensor): The batch vector
-            :math:`\mathbf{b} \in {\{ 0, \ldots, B-1\}}^N`, which assigns each
-            entry in :obj:`src` to a specific example. Must be ordered.
-        dim (int, optional): The dimension along which to split the :obj:`src`
-            tensor. (default: :obj:`0`)
-
-    :rtype: :class:`List[Tensor]`
-    """
-    sizes = degree(batch, dtype=torch.long).tolist()
-    if isinstance(src, numpy.ndarray):
-        return np.split(src, np.array(sizes).cumsum()[:-1], axis=dim)
-    else:
-        return src.split(sizes, dim)
-
-
-def unbatch_edge_index(edge_index: Tensor, batch: Tensor) -> List[Tensor]:
-    r"""Splits the :obj:`edge_index` according to a :obj:`batch` vector.
-
-    Args:
-        edge_index (Tensor): The edge_index tensor. Must be ordered.
-        batch (LongTensor): The batch vector
-            :math:`\mathbf{b} \in {\{ 0, \ldots, B-1\}}^N`, which assigns each
-            node to a specific example. Must be ordered.
-
-    :rtype: :class:`List[Tensor]`
-    """
-    deg = degree(batch, dtype=torch.int64)
-    ptr = torch.cat([deg.new_zeros(1), deg.cumsum(dim=0)[:-1]], dim=0)
-
-    edge_batch = batch[edge_index[0]]
-    edge_index = edge_index - ptr[edge_batch]
-    sizes = degree(edge_batch, dtype=torch.int64).cpu().tolist()
-    return edge_index.split(sizes, dim=1)
-
-
-def unbatch_edge_attributes(edge_attributes, edge_index: Tensor, batch: Tensor) -> List[Tensor]:
-    edge_batch = batch[edge_index[0]]
-    sizes = degree(edge_batch, dtype=torch.int64).cpu().tolist()
-    return edge_attributes.split(sizes, dim=0)
-
 
 def save_yaml_file(path, content):
     assert isinstance(path, str), f'path must be a string, got {path} which is a {type(path)}'
@@ -392,17 +307,3 @@ def ensure_device(func):
         return result
 
     return wrapper
-
-
-def count_open_files():
-    """Count the number of open files in /dev/shm/torch. Checking for memory leaks with torch multiprocessing"""
-    import subprocess
-    args = ['lsof', '-p', str(os.getpid())]
-    process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    lines = stdout.decode().splitlines()
-
-    # Filter for lines containing "dev/shm/torch"
-    filtered_lines = [line for line in lines if "dev/shm/torch" in line]
-    return len(filtered_lines)
-

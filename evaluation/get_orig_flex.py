@@ -50,32 +50,6 @@ def read_strings_from_txt(path):
         return [line.rstrip() for line in lines]
 
 
-def atype_perception(atype, aname):
-    """
-    Automatically perceive atom type from atom name, when the atom type is not
-    included in the PDB file.
-    Assumptions:
-        * Atom names start either with a number or the correct element name
-        * Element names are correct according to the periodic table (i.e. HG is a type 
-          of hydrogen, Hg is mercury; CA is alpha carbon, Ca is calcium)
-    """
-
-    atype = atype.strip()
-
-    if atype == "":  # PDB file is missing atom types
-        # Remove numbers from atom name
-        atype = "".join(c for c in aname if not c.isdigit())
-        atype = atype[:2]
-
-        # Check if name is element (uppercase or upper + lowercase) or custom
-        # atom name (e.g. HG is hydrogen of carbon CG, Hg is mercury; CA is alpha carbon
-        # Ca is calcium)
-        if atype[-1].isupper():
-            atype = atype[0]
-
-    return atype.strip()
-
-
 def run(names):
     fail = []
     for i, name in tqdm(enumerate(names), total=len(names)):

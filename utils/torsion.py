@@ -93,35 +93,6 @@ def modify_conformer_torsion_angles(pos, edge_index, mask_rotate, torsion_update
 
     return pos
 
-
-def perturb_batch(data, torsion_updates, split=False, return_updates=False):
-    if type(data) is Data:
-        return modify_conformer_torsion_angles(data.pos,
-                                               data.edge_index.T[data.edge_mask],
-                                               data.mask_rotate, torsion_updates)
-    pos_new = [] if split else copy.deepcopy(data.pos)
-    edges_of_interest = data.edge_index.T[data.edge_mask]
-    idx_node = 0
-    idx_edges = 0
-    torsion_update_list = []
-    for i, mask_rotate in enumerate(data.mask_rotate):
-        pos = data.pos[idx_node:idx_node + mask_rotate.shape[1]]
-        edges = edges_of_interest[idx_edges:idx_edges + mask_rotate.shape[0]] - idx_node
-        torsion_update = torsion_updates[idx_edges:idx_edges + mask_rotate.shape[0]]
-        torsion_update_list.append(torsion_update)
-        pos_new_ = modify_conformer_torsion_angles(pos, edges, mask_rotate, torsion_update)
-        if split:
-            pos_new.append(pos_new_)
-        else:
-            pos_new[idx_node:idx_node + mask_rotate.shape[1]] = pos_new_
-
-        idx_node += mask_rotate.shape[1]
-        idx_edges += mask_rotate.shape[0]
-    if return_updates:
-        return pos_new, torsion_update_list
-    return pos_new
-
-
 def get_dihedrals(data_list):
     edge_index, edge_mask = data_list[0]['ligand', 'ligand'].edge_index, data_list[0]['ligand'].edge_mask
     edge_list = [[] for _ in range(torch.max(edge_index) + 1)]
