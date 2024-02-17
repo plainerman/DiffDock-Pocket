@@ -1,5 +1,4 @@
-
-from argparse import ArgumentParser,FileType
+from argparse import ArgumentParser, FileType
 
 
 def parse_train_args():
@@ -9,7 +8,7 @@ def parse_train_args():
     parser.add_argument('--config', type=FileType(mode='r'), default=None)
     parser.add_argument('--log_dir', type=str, default='workdir', help='Folder in which to save model and logs')
     parser.add_argument('--restart_dir', type=str, help='Folder of previous training model from which to restart')
-    parser.add_argument('--cache_path', type=str, default='data/cacheNew', help='Folder from where to load/restore cached dataset')
+    parser.add_argument('--cache_path', type=str, default='.cache/data', help='Folder from where to load/restore cached dataset')
     parser.add_argument('--protein_ligand_csv', type=str, default=None, help='CSV table containing paths to structures')
     # parser.add_argument('--root', type=str, default="", help='Paths in the protein_ligand_csv are relative to this root')
     parser.add_argument('--split_train', type=str, default='data/splits/timesplit_no_lig_overlap_train', help='Path of file defining the split')
@@ -29,7 +28,7 @@ def parse_train_args():
     parser.add_argument('--num_dataloader_workers', type=int, default=0, help='Number of workers for dataloader')
     parser.add_argument('--pin_memory', action='store_true', default=False, help='pin_memory arg of dataloader')
     parser.add_argument('--dataloader_drop_last', action='store_true', default=False, help='drop_last arg of dataloader')
-
+    parser.add_argument('--data_dir', type=str, default='data/PDBBIND_atomCorrected/', help='Folder containing original structures')
 
     # Training arguments
     parser.add_argument('--n_epochs', type=int, default=400, help='Number of epochs for training')

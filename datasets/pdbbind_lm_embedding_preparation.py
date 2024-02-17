@@ -8,7 +8,7 @@ from Bio.SeqRecord import SeqRecord
 from tqdm import tqdm
 
 parser = ArgumentParser()
-parser.add_argument('--data_dir', type=str, default='data/PDBBind_processed', help='')
+parser.add_argument('--data_dir', type=str, default='data/PDBBIND_atomCorrected', help='')
 parser.add_argument('--chain_cutoff', type=int, default=10, help='')
 parser.add_argument('--out_file', type=str, default="data/pdbbind_sequences.fasta")
 args = parser.parse_args()

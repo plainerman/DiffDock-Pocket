@@ -9,7 +9,7 @@ from datasets.steric_clash import get_steric_clash_atom_pairs
 from Bio.PDB import PDBParser
 
 parser = ArgumentParser()
-parser.add_argument('--data_dir', type=str, default='data/PDBBind_processed/', help='Folder containing original structures')
+parser.add_argument('--data_dir', type=str, default='data/PDBBIND_atomCorrected/', help='Folder containing original structures')
 parser.add_argument('--protein_file', type=str, default='protein_processed_fix', help='Protein file suffix')
 parser.add_argument('--remove_ligand_hydrogens', action='store_true', default=False, help='')
 parser.add_argument('--remove_receptor_hydrogens', action='store_true', default=False, help='')

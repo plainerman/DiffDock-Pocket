@@ -257,6 +257,7 @@ class PDBBind(Dataset):
             if self.split_path:
                 complex_names = read_strings_from_txt(self.split_path)
                 self.protein_ligand_df = protein_ligand_df[self.protein_ligand_df["complex_name"].isin(complex_names)].copy(deep=False)
+                self.protein_ligand_df = self.protein_ligand_df[:self.limit_complexes]
                 self.protein_ligand_df.reset_index(inplace=True, drop=True)
                 logging.info(f"Kept {self.protein_ligand_df.shape[0]} rows after filtering by {self.split_path}")
 
@@ -625,7 +626,7 @@ class PDBBind(Dataset):
                             raise RMSDTooLarge(rmsd, self.match_max_rmsd)
                     else:
                         # 2) calculate the sidechains
-                        print(f"Determining residues that will be conformer matched for {exp_protein_path}:")
+                        logging.debug(f"Determining residues that will be conformer matched for {exp_protein_path}:")
 
                         distance_cutoff_func = PDBBind._get_flexdist_cutoff_func(rec_atoms_for_pocket, complex_graph['ligand'].pos,
                                                                                  self.flexdist, self.flexdist_distance_metric, self.pocket_cutoff)
@@ -894,7 +895,7 @@ def print_statistics(complex_graphs):
 
 
 def construct_loader(args, t_to_sigma):
-    transform = NoiseTransform(t_to_sigma=t_to_sigma, no_torsion=args.no_torsion,flexible_sidechains=args.flexible_sidechains,
+    transform = NoiseTransform(t_to_sigma=t_to_sigma, no_torsion=args.no_torsion, flexible_sidechains=args.flexible_sidechains,
                                all_atom=args.all_atoms, alpha=args.sampling_alpha, beta=args.sampling_beta,
                                rot_alpha=args.rot_alpha, rot_beta=args.rot_beta, tor_alpha=args.tor_alpha,
                                tor_beta=args.tor_beta, sidechain_tor_alpha=args.sidechain_tor_alpha,sidechain_tor_beta=args.sidechain_tor_beta,
@@ -902,7 +903,11 @@ def construct_loader(args, t_to_sigma):
                                asyncronous_noise_schedule=args.asyncronous_noise_schedule,
                                include_miscellaneous_atoms=False if not hasattr(args, 'include_miscellaneous_atoms') else args.include_miscellaneous_atoms)
 
-    protein_ligand_df = load_protein_ligand_df(args.protein_ligand_csv)
+    protein_ligand_df = load_protein_ligand_df_from_csv_or_split(args.protein_ligand_csv, args.split_train,
+                                                                 args.split_val, args.protein_file,
+                                                                 args.match_protein_file,
+                                                                 args.conformer_match_sidechains,
+                                                                 data_dir=args.data_dir)
 
     common_args = {'transform': transform, 'protein_ligand_df': protein_ligand_df,
                    'limit_complexes': args.limit_complexes, 'multiplicity': args.multiplicity,
@@ -958,11 +963,50 @@ def read_mols(pdbbind_dir, name, remove_hs=False):
     return [(lig, None) for lig in ligs]
 
 
+def sdf_or_mol(path):
+    for suffix in ['.sdf', '.mol2']:
+        cur_path = f"{path}{suffix}"
+        if not os.path.exists(cur_path):
+            continue
+
+        lig = read_molecule(cur_path, remove_hs=False, sanitize=True)
+        if lig:
+            return cur_path
+
+    return None
+
+
+def load_protein_ligand_df_from_csv_or_split(csv, split_train, split_val, protein_file, match_protein_file, conformer_match_sidechains, data_dir):
+    if csv is not None:
+        return load_protein_ligand_df(csv)
+
+    # Use both split_train and split_val to construct the baseline dataset
+    complexes_train = read_strings_from_txt(split_train)
+    complexes_val = read_strings_from_txt(split_val)
+
+    assert not bool(set(complexes_train) & set(complexes_val)), "Train and val splits have overlapping complexes"
+
+    dict = {'complex_name': complexes_train + complexes_val,
+            'ligand': [sdf_or_mol(os.path.join(data_dir, p, f'{p}_ligand')) for p in complexes_train + complexes_val]}
+    if conformer_match_sidechains:
+        dict['computational_protein'] = [os.path.join(data_dir, p, f'{p}_{protein_file}.pdb') for p in complexes_train + complexes_val]
+        dict['experimental_protein'] = [os.path.join(data_dir, p, f'{p}_{match_protein_file}.pdb') for p in complexes_train + complexes_val]
+    else:
+        dict['experimental_protein'] = [os.path.join(data_dir, p, f'{p}_{protein_file}.pdb') for p in complexes_train + complexes_val]
+
+    df = pd.DataFrame(dict)
+    # Drop all fields where ligand or experimental_protein is None
+    df = df.dropna(subset=['ligand', 'experimental_protein'])
+    df.reset_index(drop=True, inplace=True)
+    return load_protein_ligand_df(None, df=df)
+
 @count_pdb_warnings
 def load_protein_ligand_df(protein_ligand_csv: str, strict: bool = False, max_protein_length: int = 1024,
                            df=None) -> pd.DataFrame:
     if df is None:
+        assert protein_ligand_csv is not None, "Neither protein_ligand_csv nor df was provided."
         df = pd.read_csv(protein_ligand_csv)
+        assert df is not None, f"Could not load dataframe from {protein_ligand_csv}"
 
     keep_inds = []
     missing_or_bad = 0

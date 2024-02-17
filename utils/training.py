@@ -76,7 +76,6 @@ def loss_function(tr_pred, rot_pred, tor_pred, sc_tor_pred, data, t_to_sigma, de
             sc_tor_loss, sc_tor_base_loss = sc_tor_loss.mean() * torch.ones(1, dtype=torch.float), sc_tor_base_loss.mean() * torch.ones(1, dtype=torch.float)
         else:
             if device.type == 'cuda':
-                # TODO: this has NOT been checked
                 index = torch.cat([torch.ones(len(d['flexResidues'].edge_idx)) * i for i, d in
                                enumerate(data)]).long()
             else:
@@ -147,7 +146,7 @@ class AverageMeter():
 
 def train_epoch(model, loader, optimizer, device, t_to_sigma, loss_fn, ema_weigths):
     model.train()
-    meter = AverageMeter(['loss', 'tr_loss', 'rot_loss', 'tor_loss', 'sc_tor_loss','tr_base_loss', 'rot_base_loss', 'tor_base_loss','sc_tor_base_loss'])
+    meter = AverageMeter(['loss', 'tr_loss', 'rot_loss', 'tor_loss', 'sc_tor_loss', 'tr_base_loss', 'rot_base_loss', 'tor_base_loss','sc_tor_base_loss'])
 
     for data_row in tqdm(loader, total=len(loader)):
         data = data_row
@@ -164,12 +163,13 @@ def train_epoch(model, loader, optimizer, device, t_to_sigma, loss_fn, ema_weigt
             if loss.isnan():
                 print("SKIPPING backward pass for batch, loss is nan. This could indicate that the batch has no ligand torsion or sidechain torsions")
             else:
+                if loss.isinf():
+                    print("WARN: Loss is infinite.")
+
                 loss.backward()
                 optimizer.step()
                 ema_weigths.update(model.parameters())
-                cur_losses = [loss.cpu().detach(), tr_loss, rot_loss, tor_loss, sc_tor_loss, tr_base_loss, rot_base_loss, tor_base_loss, sc_tor_base_loss]
-                meter.add(cur_losses)
-
+                meter.add([loss.cpu().detach(), tr_loss, rot_loss, tor_loss, sc_tor_loss, tr_base_loss, rot_base_loss, tor_base_loss, sc_tor_base_loss])
         except RuntimeError as e:
             if 'out of memory' in str(e).lower():
                 print('| WARNING: ran out of memory, skipping batch')
@@ -193,7 +193,6 @@ def train_epoch(model, loader, optimizer, device, t_to_sigma, loss_fn, ema_weigt
 
 def test_epoch(model, loader, device, t_to_sigma, loss_fn, test_sigma_intervals=False):
     model.eval()
-    # TODO: meter sc_tor_loss and stuff see train epoch
     meter = AverageMeter(['loss', 'tr_loss', 'rot_loss', 'tor_loss', 'sc_tor_loss', 'tr_base_loss', 'rot_base_loss', 'tor_base_loss', 'sc_tor_base_loss'],
                          unpooled_metrics=True)
 

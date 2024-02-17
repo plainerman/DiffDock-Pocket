@@ -160,7 +160,7 @@ def main_function():
         args.config = args.config.name
     assert (args.inference_earlystop_goal == 'max' or args.inference_earlystop_goal == 'min')
     if args.val_inference_freq is not None and args.scheduler is not None:
-        assert (args.scheduler_patience > args.val_inference_freq) # otherwise we will just stop training after args.scheduler_patience epochs
+        assert (args.scheduler_patience > args.val_inference_freq)  # otherwise we will just stop training after args.scheduler_patience epochs
     if args.cudnn_benchmark:
         torch.backends.cudnn.benchmark = True
 
@@ -170,7 +170,7 @@ def main_function():
 
     model = get_model(args, device, t_to_sigma=t_to_sigma)
     optimizer, scheduler = get_optimizer_and_scheduler(args, model, scheduler_mode=args.inference_earlystop_goal if args.val_inference_freq is not None else 'min')
-    ema_weights = ExponentialMovingAverage(model.parameters(),decay=args.ema_rate)
+    ema_weights = ExponentialMovingAverage(model.parameters(), decay=args.ema_rate)
 
     if args.restart_dir and os.path.exists(args.restart_dir):
         try:

@@ -21,7 +21,7 @@ from datasets.pdbbind import read_mol
 from utils.utils import read_strings_from_txt
 
 parser = ArgumentParser()
-parser.add_argument('--data_dir', type=str, default='data/PDBBind_processed', help='')
+parser.add_argument('--data_dir', type=str, default='data/PDBBIND_atomCorrected', help='')
 parser.add_argument('--file_suffix', type=str, default='_baseline_ligand', help='Path to folder with trained model and hyperparameters')
 parser.add_argument('--protein_file_suffix', type=str, default='_protein_processed', help='Path to folder with trained model and hyperparameters')
 parser.add_argument('--results_path', type=str, default='results/gnina_predictions', help='')

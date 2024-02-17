@@ -352,6 +352,8 @@ def main(args):
 
     if "computational_protein" in protein_ligand_df.columns:
         # Don't use computational protein for inference
+        print("WARN: Dropping the column 'computational_protein' from the dataframe."
+              "This column is only used during training and will be ignored during inference.")
         protein_ligand_df.drop(columns=["computational_protein"], inplace=True)
 
     device = get_default_device()
