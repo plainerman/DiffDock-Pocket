@@ -622,18 +622,15 @@ class TensorProductScoreModel(torch.nn.Module):
 
         # assume that each bond lies between the two atoms that are connected
         bond_pos = (data['atom'].pos[bonds[0]] + data['atom'].pos[bonds[1]]) / 2
-        bond_batch = data['flexResidues'].batch  # TODO: is this correct? data['atom'].batch[bonds[0]]
-        # TODO: should we calculate the batch with radius? or use subcomponents
-        # TODO: if we keep it this way, change self.lig_max_radius
+        bond_batch = data['flexResidues'].batch
+
         edge_index = radius(data['atom'].pos, bond_pos, self.lig_max_radius, batch_x=data['atom'].batch, batch_y=bond_batch)
 
         edge_vec = data['atom'].pos[edge_index[1]] - bond_pos[edge_index[0]]
-        # TODO: what to use here?
         edge_attr = self.lig_distance_expansion(edge_vec.norm(dim=-1))
 
         edge_attr = self.sidechain_final_edge_embedding(edge_attr)
         edge_sh = o3.spherical_harmonics(self.sh_irreps, edge_vec, normalize=True, normalization='component')
-        # TODO: what to use for edge weight?
         edge_weight = self.get_edge_weight(edge_vec, self.lig_max_radius)
 
         return bonds, edge_index, edge_attr, edge_sh, edge_weight
