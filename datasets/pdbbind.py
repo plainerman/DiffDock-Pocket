@@ -1059,7 +1059,7 @@ def load_protein_ligand_df(protein_ligand_csv: str, strict: bool = False, max_pr
     protein_ligand_df = df.reset_index(drop=True)
     protein_ligand_df["pocket_center"] = None
     if "pocket_center_x" in protein_ligand_df.columns:
-        protein_ligand_df.apply(
+        protein_ligand_df["pocket_center"] = protein_ligand_df.apply(
             lambda row: center_to_torch(row["pocket_center_x"], row["pocket_center_y"], row["pocket_center_z"]), axis=1)
 
     return protein_ligand_df
