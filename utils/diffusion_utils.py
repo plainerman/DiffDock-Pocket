@@ -73,11 +73,10 @@ def modify_sidechains(data, torsion_updates):
 def sinusoidal_embedding(timesteps, dim, scale=1.0, max_positions=10000):
     """ from https://github.com/hojonathanho/diffusion/blob/master/diffusion_tf/nn.py   """
     assert len(timesteps.shape) == 1
-    timesteps *= scale
     half_dim = dim // 2
     emb = math.log(max_positions) / (half_dim - 1)
     emb = torch.exp(torch.arange(half_dim, dtype=torch.float32, device=timesteps.device) * -emb)
-    emb = timesteps.float()[:, None] * emb[None, :]
+    emb = scale * timesteps.float()[:, None] * emb[None, :]
     emb = torch.cat([torch.sin(emb), torch.cos(emb)], dim=1)
     if dim % 2 == 1:  # zero pad
         emb = F.pad(emb, (0, 1), mode='constant')
