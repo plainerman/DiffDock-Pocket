@@ -394,7 +394,7 @@ def extract_receptor_structure(rec, lig, cutoff, lm_embedding_chains=None, inclu
 
                 mask = torch.ones(len(lm_embedding_chains[i]), dtype=torch.bool, device=lm_embedding_chains[i].device)
                 mask[[d[0] for d in discarded_res_ids[chain]]] = 0  # do not use the discarded elements
-                valid_lm_embeddings.append(lm_embedding_chains[i][mask])
+                valid_lm_embeddings.append(lm_embedding_chains[i][mask].detach().cpu())
             valid_n_coords.append(n_coords[i])
             valid_c_coords.append(c_coords[i])
             valid_lengths.append(lengths[i])
