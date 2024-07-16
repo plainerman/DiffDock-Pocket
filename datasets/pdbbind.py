@@ -257,7 +257,8 @@ class PDBBind(Dataset):
             if self.split_path:
                 complex_names = read_strings_from_txt(self.split_path)
                 self.protein_ligand_df = protein_ligand_df[self.protein_ligand_df["complex_name"].isin(complex_names)].copy(deep=False)
-                self.protein_ligand_df = self.protein_ligand_df[:self.limit_complexes]
+                if self.limit_complexes > 0:
+                    self.protein_ligand_df = self.protein_ligand_df[:self.limit_complexes]
                 self.protein_ligand_df.reset_index(inplace=True, drop=True)
                 logging.info(f"Kept {self.protein_ligand_df.shape[0]} rows after filtering by {self.split_path}")
 
