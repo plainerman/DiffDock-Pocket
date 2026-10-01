@@ -121,7 +121,7 @@ def compute_ESM_embeddings(model, alphabet, labels, sequences, device=None) -> D
     toks_per_batch = 4096
     repr_layers = [33]
     include = "per_tok"
-    truncation_seq_length = 1022
+    truncation_seq_length = None
 
     dataset = FastaBatchedDataset(labels, sequences)
     batches = dataset.get_batch_indices(toks_per_batch, extra_toks_per_seq=1)
@@ -143,7 +143,7 @@ def compute_ESM_embeddings(model, alphabet, labels, sequences, device=None) -> D
             representations = {layer: t for layer, t in out["representations"].items()}
 
             for i, label in enumerate(labels):
-                truncate_len = min(truncation_seq_length, len(strs[i]))
+                truncate_len = len(strs[i])
                 embeddings[label] = representations[33][i, 1: truncate_len + 1].clone()
 
             del representations
